@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.4",
+    "@openrouter/ai-sdk-provider": "^2.3.0",
+    "@supabase/supabase-js": "^2.99.1",
+    "ai": "^6.0.116",
     "firecrawl": "^4.16.0",
     "next": "16.1.6",
     "react": "19.2.3",
