@@ -14,6 +14,21 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
 });
 
+const questionSchema = z.object({
+  questions: z
+    .array(
+      z.object({
+        question: z.string().describe("The question text"),
+        options: z
+          .array(z.string())
+          .length(4)
+          .describe("Exactly 4 answer options"),
+      }),
+    )
+    .length(5)
+    .describe("5 MCQ personalization questions"),
+});
+
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
@@ -49,22 +64,26 @@ export async function POST(req: NextRequest) {
       metadata: result.metadata ?? {},
     };
 
-    // Generate personalization questions using Gemini
+    // Generate personalization MCQs using Gemini
     const { object } = await generateObject({
-      model: openrouter("google/gemini-3-flash-preview"),
-      schema: z.object({
-        questions: z
-          .array(z.string())
-          .length(5)
-          .describe("5 personalization questions based on the brand website"),
-      }),
-      prompt: `You are a brand strategist onboarding a new client. Based on the following scraped website content, generate exactly 5 short, conversational personalization questions to better understand their brand goals and content needs. Questions should be specific to this brand, not generic.
+      model: openrouter("google/gemini-2.5-flash"),
+      schema: questionSchema,
+      prompt: `You are a brand strategist building a localized brand image for a client. You need to understand their brand deeply so you can adapt their content for US, UK, Australia, and India markets.
 
-Website title: ${scrapedData.title}
-Website description: ${scrapedData.description}
-Website content (first 3000 chars): ${scrapedData.content?.slice(0, 3000)}
+Based on the scraped website below, generate exactly 5 multiple-choice questions (4 options each). These questions should help you understand:
 
-Generate questions that cover: brand personality, target audience preferences, content goals, competitive positioning, and cultural/regional focus.`,
+1. BRAND TONE & PERSONALITY — How does the brand want to come across? (e.g., playful vs authoritative, casual vs premium). Use specifics from the website.
+2. PRIMARY AUDIENCE — Who are they really targeting? Give options that reflect realistic audience segments based on what the site sells/offers.
+3. CONTENT GOALS — What kind of social media content do they want? (e.g., educational tutorials, behind-the-scenes, customer stories, product showcases)
+4. REGIONAL PRIORITY — Which market matters most right now, or how do they want to prioritize US/UK/AU/IN rollout?
+5. CULTURAL ADAPTATION STYLE — How aggressively should content be localized? (e.g., same content everywhere, light regional tweaks, fully rebuilt per market, influencer-led per region)
+
+Make the options specific to THIS brand — reference their actual products, services, or industry. Don't use generic filler options. Each option should be short (under 10 words) and clearly distinct.
+
+WEBSITE DATA:
+Title: ${scrapedData.title}
+Description: ${scrapedData.description}
+Content (first 3000 chars): ${scrapedData.content?.slice(0, 3000)}`,
     });
 
     return NextResponse.json({
