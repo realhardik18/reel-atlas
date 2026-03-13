@@ -1,14 +1,10 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-  House,
-  ImageSquare,
-  GearSix,
-  CaretLineLeft,
-  CaretLineRight,
   PaperPlaneRight,
   Sparkle,
   CircleNotch,
@@ -17,6 +13,7 @@ import {
   FileMagnifyingGlass,
   ChatTeardropDots,
 } from "@phosphor-icons/react";
+import { useDashboard } from "./layout";
 
 interface MCQuestion {
   question: string;
@@ -40,21 +37,6 @@ interface BrandImage {
   ugc_suggestions: string[];
   target_markets: string[];
 }
-
-interface ProfileData {
-  user_id: string;
-  onboarding_complete: boolean;
-  brandImage?: {
-    brand_url: string;
-    brand_name: string;
-    brand_voice: string;
-    target_audience: string;
-    content_style: string;
-    full_brand_image: BrandImage;
-  } | null;
-}
-
-type Tab = "home" | "brand";
 
 const COUNTRIES = [
   { code: "IN", label: "India", flag: "\u{1F1EE}\u{1F1F3}" },
@@ -519,20 +501,14 @@ function OnboardingChat({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// ─── Dashboard ──────────────────────────────────────────────────────────────
+// ─── Dashboard Content ───────────────────────────────────────────────────────
 
-function Dashboard({
-  profile,
-  onBrandUpdate,
-}: {
-  profile: ProfileData;
-  onBrandUpdate: (b: BrandImage) => void;
-}) {
+function DashboardContent() {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<Tab>("home");
-  const [collapsed, setCollapsed] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const brandImage = profile.brandImage?.full_brand_image;
+  const searchParams = useSearchParams();
+  const { profile, updateBrandImage } = useDashboard();
+  const tab = searchParams.get("tab") || "home";
+  const brandImage = profile?.brandImage?.full_brand_image;
 
   // Refine state
   const [refineInput, setRefineInput] = useState("");
@@ -559,7 +535,7 @@ function Dashboard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      onBrandUpdate(data);
+      updateBrandImage(data);
       setRefineInput("");
       setCardRefreshKey((k) => k + 1);
 
@@ -582,218 +558,110 @@ function Dashboard({
     }
   }
 
-  const navItems: {
-    id: Tab;
-    label: string;
-    icon: typeof House;
-  }[] = [
-    { id: "home", label: "Home", icon: House },
-    { id: "brand", label: "Brand Image", icon: ImageSquare },
-  ];
-
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
-      {/* Sidebar */}
-      <aside
-        className={`flex shrink-0 flex-col border-r border-zinc-200 bg-white transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900 ${
-          collapsed ? "w-16" : "w-64"
-        }`}
-      >
-        {/* Logo + collapse */}
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-4 py-4 dark:border-zinc-800">
-          {!collapsed && (
-            <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              ReelAtlas
-            </span>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-          >
-            {collapsed ? (
-              <CaretLineRight size={16} />
-            ) : (
-              <CaretLineLeft size={16} />
-            )}
-          </button>
+    <div className="mx-auto max-w-5xl px-8 py-8">
+      {tab === "home" && (
+        <div className="animate-msg-in rounded-xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-900">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            Hello, {user?.firstName || "there"}!
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Welcome to your ReelAtlas dashboard. Your brand image is ready
+            {" \u2014 "}explore it in the Brand Image tab.
+          </p>
         </div>
+      )}
 
-        {/* Nav */}
-        <nav className="flex-1 space-y-1 px-2 py-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
+      {tab === "brand" && brandImage && (
+        <div className="space-y-6">
+          {/* Header + Refine bar */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+              {brandImage.brand_name}
+            </h1>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleRefine();
+              }}
+              className="relative"
+            >
+              <input
+                type="text"
+                value={refineInput}
+                onChange={(e) => setRefineInput(e.target.value)}
+                disabled={refining}
+                placeholder="Refine with a prompt..."
+                className="w-72 rounded-full border border-zinc-200 bg-white py-2.5 pl-4 pr-24 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-700"
+              />
               <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                title={collapsed ? item.label : undefined}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                  activeTab === item.id
-                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-50"
-                }`}
+                type="submit"
+                disabled={refining || !refineInput.trim()}
+                className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-full bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                <Icon size={18} className="shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {refining ? (
+                  <CircleNotch size={12} className="animate-spin" />
+                ) : (
+                  <Sparkle size={12} weight="fill" />
+                )}
+                Refine
               </button>
-            );
-          })}
-        </nav>
+            </form>
+          </div>
 
-        {/* Bottom: user + settings */}
-        <div className="shrink-0 border-t border-zinc-200 p-3 dark:border-zinc-800">
           <div
-            className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}
+            key={cardRefreshKey}
+            className={`space-y-6 ${cardRefreshKey > 0 ? "animate-card-refresh" : ""}`}
           >
-            <UserButton />
-            {!collapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="truncate text-xs text-zinc-400">
-                    {user?.primaryEmailAddress?.emailAddress}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSettingsOpen(!settingsOpen)}
-                  className={`rounded-lg p-1.5 transition-all duration-200 ${
-                    settingsOpen
-                      ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                      : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                  }`}
-                >
-                  <GearSix
-                    size={16}
-                    className={`transition-transform duration-300 ${settingsOpen ? "rotate-90" : ""}`}
-                  />
-                </button>
-              </>
-            )}
+            <div className="grid gap-5 md:grid-cols-2">
+              <Card title="Brand Voice" delay={0}>
+                {brandImage.brand_voice}
+              </Card>
+              <Card title="Target Audience" delay={1}>
+                {brandImage.target_audience}
+              </Card>
+              <Card title="Content Style" delay={2}>
+                {brandImage.content_style}
+              </Card>
+              <Card title="Content Themes" delay={3}>
+                <ul className="list-inside list-disc space-y-1">
+                  {brandImage.content_themes.map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ul>
+              </Card>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {Object.entries(brandImage.cultural_notes).map(
+                ([market, note], idx) => (
+                  <Card
+                    key={market}
+                    title={`${market} Market`}
+                    delay={4 + idx}
+                  >
+                    {note}
+                  </Card>
+                ),
+              )}
+            </div>
+
+            <Card title="UGC Suggestions" delay={8}>
+              <ul className="list-inside list-decimal space-y-2">
+                {brandImage.ugc_suggestions.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </Card>
           </div>
         </div>
-      </aside>
+      )}
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-8 py-8">
-          {/* Settings panel */}
-          {settingsOpen && (
-            <div className="animate-msg-in mb-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Settings
-              </h2>
-              <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                Settings coming soon.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "home" && (
-            <div className="animate-msg-in rounded-xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-900">
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                Hello, {user?.firstName || "there"}!
-              </h1>
-              <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                Welcome to your ReelAtlas dashboard. Your brand image is ready
-                \u2014 explore it in the Brand Image tab.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "brand" && brandImage && (
-            <div className="space-y-6">
-              {/* Header + Refine bar */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                  {brandImage.brand_name}
-                </h1>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleRefine();
-                  }}
-                  className="relative"
-                >
-                  <input
-                    type="text"
-                    value={refineInput}
-                    onChange={(e) => setRefineInput(e.target.value)}
-                    disabled={refining}
-                    placeholder="Refine with a prompt..."
-                    className="w-72 rounded-full border border-zinc-200 bg-white py-2.5 pl-4 pr-24 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-700"
-                  />
-                  <button
-                    type="submit"
-                    disabled={refining || !refineInput.trim()}
-                    className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-full bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    {refining ? (
-                      <CircleNotch size={12} className="animate-spin" />
-                    ) : (
-                      <Sparkle size={12} weight="fill" />
-                    )}
-                    Refine
-                  </button>
-                </form>
-              </div>
-
-              <div
-                key={cardRefreshKey}
-                className={`space-y-6 ${cardRefreshKey > 0 ? "animate-card-refresh" : ""}`}
-              >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <Card title="Brand Voice" delay={0}>
-                    {brandImage.brand_voice}
-                  </Card>
-                  <Card title="Target Audience" delay={1}>
-                    {brandImage.target_audience}
-                  </Card>
-                  <Card title="Content Style" delay={2}>
-                    {brandImage.content_style}
-                  </Card>
-                  <Card title="Content Themes" delay={3}>
-                    <ul className="list-inside list-disc space-y-1">
-                      {brandImage.content_themes.map((t, i) => (
-                        <li key={i}>{t}</li>
-                      ))}
-                    </ul>
-                  </Card>
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                  {Object.entries(brandImage.cultural_notes).map(
-                    ([market, note], idx) => (
-                      <Card
-                        key={market}
-                        title={`${market} Market`}
-                        delay={4 + idx}
-                      >
-                        {note}
-                      </Card>
-                    ),
-                  )}
-                </div>
-
-                <Card title="UGC Suggestions" delay={8}>
-                  <ul className="list-inside list-decimal space-y-2">
-                    {brandImage.ugc_suggestions.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "brand" && !brandImage && (
-            <div className="animate-msg-in rounded-xl border border-zinc-200 bg-white p-8 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-              No brand image data found.
-            </div>
-          )}
+      {tab === "brand" && !brandImage && (
+        <div className="animate-msg-in rounded-xl border border-zinc-200 bg-white p-8 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          No brand image data found.
         </div>
-      </main>
+      )}
     </div>
   );
 }
@@ -825,49 +693,17 @@ function Card({
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, loading, refetchProfile } = useDashboard();
 
-  async function fetchProfile() {
-    const res = await fetch("/api/profile");
-    const data = await res.json();
-    setProfile(data);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  function handleBrandUpdate(updated: BrandImage) {
-    if (!profile?.brandImage) return;
-    setProfile({
-      ...profile,
-      brandImage: {
-        ...profile.brandImage,
-        full_brand_image: updated,
-      },
-    });
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <CircleNotch size={24} className="animate-spin text-zinc-400" />
-      </div>
-    );
-  }
+  if (loading) return null; // layout shows spinner
 
   if (!profile?.onboarding_complete) {
-    return (
-      <OnboardingChat
-        onComplete={() => {
-          setLoading(true);
-          fetchProfile();
-        }}
-      />
-    );
+    return <OnboardingChat onComplete={refetchProfile} />;
   }
 
-  return <Dashboard profile={profile} onBrandUpdate={handleBrandUpdate} />;
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
+  );
 }
