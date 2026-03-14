@@ -13,6 +13,8 @@ import {
 import {
   House,
   ImageSquare,
+  FilmSlate,
+  GlobeHemisphereWest,
   GearSix,
   SidebarSimple,
   CircleNotch,
@@ -67,6 +69,8 @@ export function useDashboard() {
 const NAV_ITEMS = [
   { href: "/dashboard", tab: null, label: "Home", icon: House },
   { href: "/dashboard?tab=brand", tab: "brand", label: "Brand Image", icon: ImageSquare },
+  { href: "/dashboard?tab=studio", tab: "studio", label: "Studio", icon: FilmSlate },
+  { href: "/dashboard?tab=localize", tab: "localize", label: "Localize", icon: GlobeHemisphereWest },
 ];
 
 // ─── Sidebar (needs useSearchParams inside Suspense) ────────────────────────
@@ -78,7 +82,6 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
   const isSettings = pathname === "/dashboard/settings";
-
   return (
     <aside
       className={`flex shrink-0 flex-col border-r border-zinc-200 bg-white transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900 ${
@@ -236,7 +239,7 @@ export default function DashboardLayout({
         <Suspense>
           <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
         </Suspense>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-hidden">{children}</main>
       </div>
     </DashboardContext.Provider>
   );
