@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import { Toaster } from "sonner";
@@ -31,6 +32,21 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/@react-grab/claude-code/dist/client.global.js"
+            strategy="lazyOnload"
+          />
+        )}
+      </head>
         <body className={`${dmSans.variable} ${instrumentSerif.variable} font-[family-name:var(--font-dm-sans)] antialiased`}>
           {children}
           <Toaster position="bottom-right" theme="dark" richColors />

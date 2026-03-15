@@ -603,7 +603,7 @@ function DashboardContent() {
                 className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
                 <Sparkle size={12} weight="fill" />
-                New scripts
+                Create script
               </button>
             </div>
 
@@ -660,7 +660,7 @@ function DashboardContent() {
                         </h3>
                         {script.ready_to_localize && (
                           <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            Localize
+                            Localized
                           </span>
                         )}
                       </div>
@@ -715,7 +715,7 @@ function DashboardContent() {
                         </div>
                       )}
 
-                      <div className="mt-4">
+                      <div className="mt-auto pt-4">
                         <button
                           onClick={() => router.push(`/dashboard/script/${script.id}`)}
                           className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"

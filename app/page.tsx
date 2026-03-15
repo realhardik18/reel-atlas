@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
-  Globe,
   FileText,
   Zap,
   Monitor,
   Quote,
   ArrowRight,
 } from "lucide-react";
+
+const CobeGlobe = dynamic(() => import("./components/Globe"), { ssr: false });
 
 const featuredMarkets = [
   { code: "US", label: "USA", flag: "\u{1F1FA}\u{1F1F8}" },
@@ -77,6 +81,14 @@ const comparisonRows = [
   },
 ];
 
+function smoothScroll(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+  e.preventDefault();
+  const target = document.querySelector(href);
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100 selection:bg-white selection:text-black overflow-x-hidden">
@@ -84,9 +96,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 backdrop-blur-xl bg-black/60 border-b border-white/5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-            <Globe className="text-white w-4 h-4" />
-          </div>
+          <img src="/favicon.ico" alt="ReelAtlas" className="w-8 h-8" />
           <span style={{ fontFamily: "serif" }} className="text-xl font-medium tracking-tight text-white">
             Reel<span className="text-zinc-500 italic">Atlas</span>
           </span>
@@ -97,6 +107,7 @@ export default function Home() {
             <a
               key={item}
               href={`#${item.toLowerCase().replace(/\s/g, "-")}`}
+              onClick={(e) => smoothScroll(e, `#${item.toLowerCase().replace(/\s/g, "-")}`)}
               className="text-[13px] text-zinc-500 hover:text-white transition-colors"
             >
               {item}
@@ -105,10 +116,10 @@ export default function Home() {
         </div>
 
         <Link
-          href="/sign-up"
+          href="/dashboard"
           className="text-[13px] bg-white text-black px-5 py-2 rounded-lg font-medium hover:bg-zinc-200 transition-colors"
         >
-          Get access
+          Go to Dashboard
         </Link>
       </nav>
 
@@ -142,6 +153,7 @@ export default function Home() {
             </Link>
             <a
               href="#how-it-works"
+              onClick={(e) => smoothScroll(e, "#how-it-works")}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-[15px] text-zinc-400 border border-white/10 hover:border-white/20 hover:text-white transition-all"
             >
               See how it works
@@ -165,6 +177,11 @@ export default function Home() {
             </span>
           </div>
         </div>
+      </section>
+
+      {/* Globe */}
+      <section className="max-w-3xl mx-auto px-6 -mt-10 mb-10">
+        <CobeGlobe />
       </section>
 
       {/* How it works */}
@@ -228,7 +245,7 @@ export default function Home() {
             </div>
           </div>
 
-          {comparisonRows.map((row, idx) => (
+          {comparisonRows.map((row) => (
             <div
               key={row.code}
               className="grid grid-cols-1 sm:grid-cols-12 border-b last:border-0 border-white/5 hover:bg-white/[0.015] transition-colors"

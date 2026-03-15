@@ -93,27 +93,16 @@ function Sidebar() {
       style={{ borderRight: "0.5px solid var(--color-border-tertiary, #e5e5e5)" }}
     >
       {/* Logo */}
-      <div className="flex h-12 shrink-0 items-center px-3.5">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3.5">
+        <img src="/favicon.ico" alt="ReelAtlas" className="w-5 h-5 shrink-0" />
         <div
-          className="flex shrink-0 items-baseline text-lg leading-none whitespace-nowrap"
+          className={`flex shrink-0 items-baseline text-lg leading-none whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ${
+            expanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
+          }`}
           style={{ fontFamily: "var(--font-instrument-serif, serif)", letterSpacing: "-0.3px" }}
         >
-          <span className="text-zinc-900 dark:text-zinc-50">R</span>
-          <span
-            className={`inline-block overflow-hidden transition-[max-width,opacity] duration-300 ${
-              expanded ? "max-w-[60px] opacity-100" : "max-w-0 opacity-0"
-            }`}
-          >
-            eel
-          </span>
-          <span className="italic text-zinc-400 dark:text-zinc-500">A</span>
-          <span
-            className={`inline-block overflow-hidden transition-[max-width,opacity] duration-300 ${
-              expanded ? "max-w-[60px] opacity-100" : "max-w-0 opacity-0"
-            }`}
-          >
-            <span className="italic text-zinc-400 dark:text-zinc-500">tlas</span>
-          </span>
+          <span className="text-zinc-900 dark:text-zinc-50">Reel</span>
+          <span className="italic text-zinc-400 dark:text-zinc-500">Atlas</span>
         </div>
       </div>
 
