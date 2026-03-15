@@ -16,7 +16,6 @@ import {
   FilmSlate,
   GlobeHemisphereWest,
   GearSix,
-  SidebarSimple,
   CircleNotch,
 } from "@phosphor-icons/react";
 
@@ -68,49 +67,56 @@ export function useDashboard() {
 
 const NAV_ITEMS = [
   { href: "/dashboard", tab: null, label: "Home", icon: House },
-  { href: "/dashboard?tab=brand", tab: "brand", label: "Brand Image", icon: ImageSquare },
+  { href: "/dashboard?tab=brand", tab: "brand", label: "Brand", icon: ImageSquare },
   { href: "/dashboard?tab=studio", tab: "studio", label: "Studio", icon: FilmSlate },
   { href: "/dashboard?tab=localize", tab: "localize", label: "Localize", icon: GlobeHemisphereWest },
 ];
 
-// ─── Sidebar (needs useSearchParams inside Suspense) ────────────────────────
+// ─── Sidebar ────────────────────────────────────────────────────────────────
 
-function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
+function Sidebar() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
   const isSettings = pathname === "/dashboard/settings";
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <aside
-      className={`flex shrink-0 flex-col border-r border-zinc-200 bg-white transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900 ${
-        collapsed ? "w-16" : "w-64"
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      className={`group/sidebar relative flex h-full shrink-0 flex-col bg-white transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] dark:bg-zinc-950 ${
+        expanded ? "w-52" : "w-[52px]"
       }`}
+      style={{ borderRight: "0.5px solid var(--color-border-tertiary, #e5e5e5)" }}
     >
-      {/* Logo + collapse */}
-      <div
-        className={`flex shrink-0 items-center border-b border-zinc-200 px-4 py-4 dark:border-zinc-800 ${collapsed ? "justify-center" : "justify-between"}`}
-      >
-        {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            ReelAtlas
-          </span>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="rounded-lg p-1.5 text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+      {/* Logo */}
+      <div className="flex h-12 shrink-0 items-center overflow-hidden px-3.5">
+        <div
+          className="shrink-0 text-lg leading-none"
+          style={{ fontFamily: "var(--font-instrument-serif, serif)", letterSpacing: "-0.3px" }}
         >
-          <SidebarSimple
-            size={18}
-            className={`transition-transform duration-300 ${collapsed ? "scale-x-[-1]" : ""}`}
-          />
-        </button>
+          <span className="text-zinc-900 dark:text-zinc-50">R</span>
+          <span
+            className={`inline-block overflow-hidden transition-all duration-300 ${
+              expanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
+            }`}
+          >
+            eel
+          </span>
+          <span className="italic text-zinc-400 dark:text-zinc-500">
+            {expanded ? "Atlas" : "a"}
+          </span>
+        </div>
       </div>
 
+      {/* Divider */}
+      <div className="mx-2.5" style={{ height: "0.5px", background: "var(--color-border-tertiary, #e5e5e5)" }} />
+
       {/* Nav */}
-      <nav className="flex-1 space-y-1 px-2 py-3">
+      <nav className="flex-1 space-y-0.5 px-1.5 py-2">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = !isSettings && (
@@ -122,47 +128,81 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
             <button
               key={item.href}
               onClick={() => router.push(item.href)}
-              title={collapsed ? item.label : undefined}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+              title={!expanded ? item.label : undefined}
+              className={`group/item relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150 ${
                 isActive
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-50"
+                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-50"
+                  : "text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-300"
               }`}
             >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <Icon size={18} weight={isActive ? "fill" : "regular"} className="shrink-0" />
+              <span
+                className={`whitespace-nowrap transition-all duration-300 ${
+                  expanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 pointer-events-none absolute left-10"
+                }`}
+              >
+                {item.label}
+              </span>
+              {/* Active indicator dot — only when collapsed */}
+              {isActive && !expanded && (
+                <span className="absolute -right-0.5 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+              )}
             </button>
           );
         })}
       </nav>
 
-      {/* Bottom: user + settings */}
-      <div className="shrink-0 border-t border-zinc-200 p-3 dark:border-zinc-800">
-        <div
-          className={`flex items-center ${collapsed ? "flex-col gap-2" : "gap-3"}`}
+      {/* Bottom — settings + user */}
+      <div className="shrink-0 px-1.5 pb-2 space-y-0.5">
+        {/* Divider */}
+        <div className="mx-1" style={{ height: "0.5px", background: "var(--color-border-tertiary, #e5e5e5)", marginBottom: "4px" }} />
+
+        <button
+          onClick={() => router.push("/dashboard/settings")}
+          title={!expanded ? "Settings" : undefined}
+          className={`relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150 ${
+            isSettings
+              ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-50"
+              : "text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-300"
+          }`}
         >
-          <UserButton />
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="truncate text-xs text-zinc-400">
-                {user?.primaryEmailAddress?.emailAddress}
-              </p>
-            </div>
-          )}
-          <button
-            onClick={() => router.push("/dashboard/settings")}
-            title="Settings"
-            className={`rounded-lg p-1.5 transition-all duration-200 ${
-              isSettings
-                ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+          <GearSix size={18} weight={isSettings ? "fill" : "regular"} className="shrink-0" />
+          <span
+            className={`whitespace-nowrap transition-all duration-300 ${
+              expanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 pointer-events-none absolute left-10"
             }`}
           >
-            <GearSix size={16} />
-          </button>
+            Settings
+          </span>
+        </button>
+
+        {/* User */}
+        <div
+          className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-all duration-150 ${
+            expanded ? "" : "justify-center"
+          }`}
+        >
+          <div className="shrink-0">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "w-6 h-6",
+                },
+              }}
+            />
+          </div>
+          <div
+            className={`min-w-0 flex-1 transition-all duration-300 ${
+              expanded ? "opacity-100" : "opacity-0 pointer-events-none absolute left-12 w-0 overflow-hidden"
+            }`}
+          >
+            <p className="truncate text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="truncate text-[10px] text-zinc-400 dark:text-zinc-600">
+              {user?.primaryEmailAddress?.emailAddress}
+            </p>
+          </div>
         </div>
       </div>
     </aside>
@@ -178,7 +218,6 @@ export default function DashboardLayout({
 }) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/profile");
@@ -216,8 +255,8 @@ export default function DashboardLayout({
   if (loading) {
     return (
       <DashboardContext.Provider value={ctxValue}>
-        <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-          <CircleNotch size={24} className="animate-spin text-zinc-400" />
+        <div className="flex h-screen items-center justify-center bg-white dark:bg-zinc-950">
+          <CircleNotch size={20} className="animate-spin text-zinc-300 dark:text-zinc-600" />
         </div>
       </DashboardContext.Provider>
     );
@@ -237,7 +276,7 @@ export default function DashboardLayout({
     <DashboardContext.Provider value={ctxValue}>
       <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
         <Suspense>
-          <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+          <Sidebar />
         </Suspense>
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>

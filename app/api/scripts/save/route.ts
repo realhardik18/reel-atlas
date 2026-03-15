@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data, error } = await getSupabaseAdmin()
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
     .from("scripts")
     .insert({ user_id: userId, title, content })
     .select("id, title, content, created_at")
@@ -26,6 +28,13 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Save initial version (v1) so version history always has a baseline
+  await supabase.from("script_versions").insert({
+    script_id: data.id,
+    version_number: 1,
+    content,
+  });
 
   return NextResponse.json(data);
 }

@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const count = Math.min(4, Math.max(1, Number(body.count) || 3));
+  const notes = (body.notes || "").trim();
 
   // Fetch user's latest brand image
   const { data: brandImage } = await getSupabaseAdmin()
@@ -35,30 +36,43 @@ export async function POST(req: NextRequest) {
 
   const bi = brandImage.full_brand_image;
 
+  const notesSection = notes
+    ? `\nADDITIONAL NOTES FROM THE USER:\n${notes}\nIncorporate these notes into the scripts where relevant.\n`
+    : "";
+
   const result = streamText({
     model: openrouter("google/gemini-2.5-flash"),
-    prompt: `You are a UGC video script writer. Based on the following brand image, generate exactly ${count} unique UGC (User Generated Content) video script${count !== 1 ? "s" : ""}. Each script should be for a 20-30 second video.
+    prompt: `You are an expert UGC (User Generated Content) video script writer who creates highly detailed, production-ready scripts. Based on the following brand profile, generate exactly ${count} unique UGC video script${count !== 1 ? "s" : ""}.
 
-BRAND IMAGE:
+BRAND PROFILE:
 Brand: ${bi.brand_name}
 Voice: ${bi.brand_voice}
 Target Audience: ${bi.target_audience}
 Content Style: ${bi.content_style}
 Content Themes: ${bi.content_themes?.join(", ")}
 UGC Suggestions: ${bi.ugc_suggestions?.join(", ")}
+Target Markets: ${bi.target_markets?.join(", ")}
+${notesSection}
+SCRIPT REQUIREMENTS:
+- Each script should be 25-40 seconds when spoken aloud
+- Each must be a DIFFERENT format (mix from: testimonial, tutorial/how-to, day-in-the-life, unboxing, get-ready-with-me, before/after, storytime, POV, problem-solution, comparison)
+- Make them feel raw, authentic, and native to the platform — not polished or corporate
+
+DETAILED FORMAT FOR EACH SCRIPT:
+1. Start with: # [Catchy Script Title]
+2. Below the title, add a short italic line: *Format: [type] | Duration: [Xs] | Platform: [TikTok/Reels/Shorts]*
+3. Use ## for section breaks within the script
+4. Use **bold** for all visual/scene directions and camera notes
+5. Use regular text for spoken dialogue (write it exactly as it would be said, conversationally)
+6. Use > blockquotes for on-screen text overlays or captions
+7. Include precise timing cues like [0:00-0:05] for each beat
+8. Add a --- separator before a final section called ## Production Notes with 2-3 bullet points about filming tips, mood, and pacing
 
 CRITICAL FORMAT RULES:
-- You MUST separate each script with exactly this delimiter on its own line: ===SCRIPT_BREAK===
-- Start each script with a markdown heading: # Script Title
-- Include scene directions in **bold**
-- Include spoken dialogue in regular text
-- Include timing cues like [0:00-0:05] for each section
-- Keep each script between 20-30 seconds when spoken aloud
-- Make each script distinct in style/approach (e.g. testimonial, tutorial, day-in-the-life, unboxing)
-- Make them feel authentic and natural, not overly polished
-- Do NOT wrap scripts in code blocks or JSON
-- Output ${count} scripts separated by ===SCRIPT_BREAK===
-- Do NOT put ===SCRIPT_BREAK=== before the first script or after the last script`,
+- Separate each script with exactly this delimiter on its own line: ===SCRIPT_BREAK===
+- Do NOT put ===SCRIPT_BREAK=== before the first script or after the last script
+- Do NOT wrap scripts in code blocks, JSON, or any container
+- Output raw markdown only`,
   });
 
   return result.toTextStreamResponse();

@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await getSupabaseAdmin()
     .from("scripts")
-    .select("id, title, content, created_at, updated_at")
+    .select("id, title, content, created_at, updated_at, ready_to_localize")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
