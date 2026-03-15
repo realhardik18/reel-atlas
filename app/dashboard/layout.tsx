@@ -66,10 +66,10 @@ export function useDashboard() {
 // ─── Nav items ──────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { href: "/dashboard", tab: null, label: "Home", icon: House },
-  { href: "/dashboard?tab=brand", tab: "brand", label: "Brand", icon: ImageSquare },
-  { href: "/dashboard?tab=studio", tab: "studio", label: "Studio", icon: FilmSlate },
-  { href: "/dashboard?tab=localize", tab: "localize", label: "Localize", icon: GlobeHemisphereWest },
+  { href: "/dashboard", label: "Home", icon: House },
+  { href: "/dashboard?tab=brand", label: "Brand", icon: ImageSquare },
+  { href: "/dashboard/studio", label: "Studio", icon: FilmSlate },
+  { href: "/dashboard/localize", label: "Localize", icon: GlobeHemisphereWest },
 ];
 
 // ─── Sidebar ────────────────────────────────────────────────────────────────
@@ -124,10 +124,13 @@ function Sidebar() {
       <nav className="flex-1 space-y-0.5 px-1.5 py-2">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const isHrefWithQuery = item.href.includes("?");
           const isActive = !isSettings && (
-            item.tab === null
-              ? pathname === "/dashboard" && !currentTab
-              : currentTab === item.tab
+            isHrefWithQuery
+              ? pathname === "/dashboard" && item.href === `/dashboard?tab=${currentTab}`
+              : item.href === "/dashboard"
+                ? pathname === "/dashboard" && !currentTab
+                : pathname === item.href
           );
           return (
             <button
