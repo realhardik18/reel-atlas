@@ -856,7 +856,7 @@ function DashboardContent() {
   // ─── Render ───────────────────────────────────────────────────────
 
   return (
-    <>
+    <div className="h-full overflow-hidden">
       {/* ──── HOME TAB: Script cards or script detail ──── */}
       {tab === "home" && !activeScript && (
         <div className="h-full overflow-y-auto">
@@ -1341,7 +1341,7 @@ function DashboardContent() {
                     <div className="flex-1 overflow-y-auto">
                       {content ? (
                         <ScriptEditor
-                          key={`stream-${i}-${streamingDone ? "done" : "streaming"}-${content.length}`}
+                          key={`stream-${i}-${streamingDone ? "done" : "streaming"}`}
                           initialContent={content}
                           editable={streamingDone && refiningIndex !== i}
                           streaming={!streamingDone || refiningIndex === i}
@@ -1445,7 +1445,7 @@ function DashboardContent() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

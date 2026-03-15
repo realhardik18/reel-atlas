@@ -93,21 +93,26 @@ function Sidebar() {
       style={{ borderRight: "0.5px solid var(--color-border-tertiary, #e5e5e5)" }}
     >
       {/* Logo */}
-      <div className="flex h-12 shrink-0 items-center overflow-hidden px-3.5">
+      <div className="flex h-12 shrink-0 items-center px-3.5">
         <div
-          className="shrink-0 text-lg leading-none"
+          className="flex shrink-0 items-baseline text-lg leading-none whitespace-nowrap"
           style={{ fontFamily: "var(--font-instrument-serif, serif)", letterSpacing: "-0.3px" }}
         >
           <span className="text-zinc-900 dark:text-zinc-50">R</span>
           <span
-            className={`inline-block overflow-hidden transition-all duration-300 ${
-              expanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
+            className={`inline-block overflow-hidden transition-[max-width,opacity] duration-300 ${
+              expanded ? "max-w-[60px] opacity-100" : "max-w-0 opacity-0"
             }`}
           >
             eel
           </span>
-          <span className="italic text-zinc-400 dark:text-zinc-500">
-            {expanded ? "Atlas" : "a"}
+          <span className="italic text-zinc-400 dark:text-zinc-500">A</span>
+          <span
+            className={`inline-block overflow-hidden transition-[max-width,opacity] duration-300 ${
+              expanded ? "max-w-[60px] opacity-100" : "max-w-0 opacity-0"
+            }`}
+          >
+            <span className="italic text-zinc-400 dark:text-zinc-500">tlas</span>
           </span>
         </div>
       </div>
@@ -143,10 +148,6 @@ function Sidebar() {
               >
                 {item.label}
               </span>
-              {/* Active indicator dot — only when collapsed */}
-              {isActive && !expanded && (
-                <span className="absolute -right-0.5 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-zinc-900 dark:bg-zinc-100" />
-              )}
             </button>
           );
         })}

@@ -22,6 +22,7 @@ export default function ScriptEditor({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const lastContentRef = useRef(initialContent);
 
   const editor = useEditor({
     extensions: [StarterKit, Markdown],
@@ -64,18 +65,24 @@ export default function ScriptEditor({
     },
   });
 
-  // Update content when streaming new data
+  // Update content when streaming new data — only if content actually changed
   useEffect(() => {
-    if (editor && initialContent) {
-      if (streaming) {
-        // During streaming, replace content without resetting cursor
-        const currentContent = editor.getHTML();
-        if (currentContent !== initialContent) {
-          editor.commands.setContent(initialContent);
-        }
-      } else {
-        editor.commands.setContent(initialContent);
+    if (!editor || !initialContent) return;
+    if (initialContent === lastContentRef.current && editor.getHTML() !== "") return;
+    lastContentRef.current = initialContent;
+
+    if (streaming) {
+      // During streaming, silently replace content preserving scroll
+      const scrollParent = editor.view.dom.closest("[class*='overflow-y']");
+      const scrollTop = scrollParent?.scrollTop ?? 0;
+      editor.commands.setContent(initialContent);
+      if (scrollParent) {
+        requestAnimationFrame(() => {
+          scrollParent.scrollTop = scrollTop;
+        });
       }
+    } else {
+      editor.commands.setContent(initialContent);
     }
   }, [editor, initialContent, streaming]);
 
