@@ -4,7 +4,6 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { diffLines } from "diff";
 import {
   PaperPlaneRight,
   Sparkle,
@@ -13,15 +12,10 @@ import {
   Globe,
   FileMagnifyingGlass,
   ChatTeardropDots,
-  Trash,
-  ArrowLeft,
-  ClockCounterClockwise,
-  GlobeHemisphereWest,
-  ArrowCounterClockwise,
   FilmSlate,
 } from "@phosphor-icons/react";
+import ReactCountryFlag from "react-country-flag";
 import BrandImageEditor from "./components/BrandImageEditor";
-import ScriptEditor from "./components/ScriptEditor";
 import { useDashboard } from "./layout";
 
 interface MCQuestion {
@@ -43,13 +37,7 @@ interface Script {
   created_at: string;
   updated_at?: string;
   ready_to_localize?: boolean;
-}
-
-interface ScriptVersion {
-  id: string;
-  version_number: number;
-  content: string;
-  created_at: string;
+  localized_markets?: string[];
 }
 
 interface BrandImage {
@@ -64,21 +52,21 @@ interface BrandImage {
 }
 
 const COUNTRIES = [
-  { code: "IN", label: "India", flag: "\u{1F1EE}\u{1F1F3}" },
-  { code: "US", label: "United States", flag: "\u{1F1FA}\u{1F1F8}" },
-  { code: "BR", label: "Brazil", flag: "\u{1F1E7}\u{1F1F7}" },
-  { code: "ID", label: "Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
-  { code: "MX", label: "Mexico", flag: "\u{1F1F2}\u{1F1FD}" },
-  { code: "VN", label: "Vietnam", flag: "\u{1F1FB}\u{1F1F3}" },
-  { code: "RU", label: "Russia", flag: "\u{1F1F7}\u{1F1FA}" },
-  { code: "TR", label: "Turkey", flag: "\u{1F1F9}\u{1F1F7}" },
-  { code: "JP", label: "Japan", flag: "\u{1F1EF}\u{1F1F5}" },
-  { code: "UK", label: "United Kingdom", flag: "\u{1F1EC}\u{1F1E7}" },
-  { code: "DE", label: "Germany", flag: "\u{1F1E9}\u{1F1EA}" },
-  { code: "KR", label: "South Korea", flag: "\u{1F1F0}\u{1F1F7}" },
-  { code: "FR", label: "France", flag: "\u{1F1EB}\u{1F1F7}" },
-  { code: "CA", label: "Canada", flag: "\u{1F1E8}\u{1F1E6}" },
-  { code: "AU", label: "Australia", flag: "\u{1F1E6}\u{1F1FA}" },
+  { code: "IN", label: "India", flag: "\u{1F1EE}\u{1F1F3}", countryCode: "IN" },
+  { code: "US", label: "United States", flag: "\u{1F1FA}\u{1F1F8}", countryCode: "US" },
+  { code: "BR", label: "Brazil", flag: "\u{1F1E7}\u{1F1F7}", countryCode: "BR" },
+  { code: "ID", label: "Indonesia", flag: "\u{1F1EE}\u{1F1E9}", countryCode: "ID" },
+  { code: "MX", label: "Mexico", flag: "\u{1F1F2}\u{1F1FD}", countryCode: "MX" },
+  { code: "VN", label: "Vietnam", flag: "\u{1F1FB}\u{1F1F3}", countryCode: "VN" },
+  { code: "RU", label: "Russia", flag: "\u{1F1F7}\u{1F1FA}", countryCode: "RU" },
+  { code: "TR", label: "Turkey", flag: "\u{1F1F9}\u{1F1F7}", countryCode: "TR" },
+  { code: "JP", label: "Japan", flag: "\u{1F1EF}\u{1F1F5}", countryCode: "JP" },
+  { code: "UK", label: "United Kingdom", flag: "\u{1F1EC}\u{1F1E7}", countryCode: "GB" },
+  { code: "DE", label: "Germany", flag: "\u{1F1E9}\u{1F1EA}", countryCode: "DE" },
+  { code: "KR", label: "South Korea", flag: "\u{1F1F0}\u{1F1F7}", countryCode: "KR" },
+  { code: "FR", label: "France", flag: "\u{1F1EB}\u{1F1F7}", countryCode: "FR" },
+  { code: "CA", label: "Canada", flag: "\u{1F1E8}\u{1F1E6}", countryCode: "CA" },
+  { code: "AU", label: "Australia", flag: "\u{1F1E6}\u{1F1FA}", countryCode: "AU" },
 ];
 
 const SCRAPE_STEPS = [
@@ -539,13 +527,6 @@ function DashboardContent() {
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
 
-  // Script detail view state (for home tab)
-  const [activeScript, setActiveScript] = useState<Script | null>(null);
-  const [versions, setVersions] = useState<ScriptVersion[]>([]);
-  const [showVersions, setShowVersions] = useState(false);
-  const [loadingVersions, setLoadingVersions] = useState(false);
-  const [revertingId, setRevertingId] = useState<string | null>(null);
-  const [diffVersionId, setDiffVersionId] = useState<string | null>(null);
 
   // Load scripts
   useEffect(() => {
@@ -559,99 +540,6 @@ function DashboardContent() {
         .catch(() => setScriptsLoaded(true));
     }
   }, [scriptsLoaded]);
-
-  // ─── Script CRUD (saved scripts) ──────────────────────────────────
-
-  async function handleScriptUpdate(id: string, markdown: string) {
-    try {
-      const res = await fetch(`/api/scripts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: markdown }),
-      });
-      const updated = await res.json();
-      if (!res.ok) throw new Error(updated.error);
-      setScripts((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, content: markdown, updated_at: updated.updated_at } : s)),
-      );
-      if (activeScript?.id === id) {
-        setActiveScript((prev) => prev ? { ...prev, content: markdown, updated_at: updated.updated_at } : prev);
-      }
-    } catch {
-      // Silent fail for auto-save
-    }
-  }
-
-  async function handleDeleteScript(id: string) {
-    try {
-      const res = await fetch(`/api/scripts/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      setScripts((prev) => prev.filter((s) => s.id !== id));
-      if (activeScript?.id === id) setActiveScript(null);
-      toast.success("Script deleted.");
-    } catch {
-      toast.error("Failed to delete script.");
-    }
-  }
-
-  async function handleToggleLocalize(id: string, current: boolean) {
-    try {
-      const res = await fetch(`/api/scripts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ready_to_localize: !current }),
-      });
-      const updated = await res.json();
-      if (!res.ok) throw new Error(updated.error);
-      setScripts((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ready_to_localize: !current } : s)),
-      );
-      if (activeScript?.id === id) {
-        setActiveScript((prev) => prev ? { ...prev, ready_to_localize: !current } : prev);
-      }
-      toast.success(!current ? "Marked ready for localization" : "Removed from localization");
-    } catch {
-      toast.error("Failed to update script.");
-    }
-  }
-
-  // ─── Version History ──────────────────────────────────────────────
-
-  async function loadVersions(scriptId: string) {
-    setLoadingVersions(true);
-    try {
-      const res = await fetch(`/api/scripts/${scriptId}/versions`);
-      const data = await res.json();
-      setVersions(data.versions || []);
-    } catch {
-      toast.error("Failed to load versions.");
-    } finally {
-      setLoadingVersions(false);
-    }
-  }
-
-  async function handleRevert(scriptId: string, versionId: string) {
-    setRevertingId(versionId);
-    try {
-      const res = await fetch(`/api/scripts/${scriptId}/versions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ version_id: versionId }),
-      });
-      const updated = await res.json();
-      if (!res.ok) throw new Error(updated.error);
-      setScripts((prev) =>
-        prev.map((s) => (s.id === scriptId ? { ...s, content: updated.content, updated_at: updated.updated_at } : s)),
-      );
-      setActiveScript(updated);
-      await loadVersions(scriptId);
-      toast.success("Reverted to previous version");
-    } catch {
-      toast.error("Failed to revert.");
-    } finally {
-      setRevertingId(null);
-    }
-  }
 
   // ─── Brand image refine ───────────────────────────────────────────
 
@@ -698,7 +586,7 @@ function DashboardContent() {
   return (
     <div className="h-full overflow-hidden">
       {/* ──── HOME TAB: Script cards or script detail ──── */}
-      {tab === "home" && !activeScript && (
+      {tab === "home" && (
         <div className="h-full overflow-y-auto">
           <div className="mx-auto max-w-6xl px-8 py-8">
             <div className="flex items-center justify-between mb-6">
@@ -794,13 +682,42 @@ function DashboardContent() {
                         )}
                       </div>
 
+                      {/* Localized markets */}
+                      {script.localized_markets && script.localized_markets.length > 0 && (
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <div className="flex items-center -space-x-1">
+                            {script.localized_markets.slice(0, 5).map((code) => {
+                              const country = COUNTRIES.find((c) => c.code === code);
+                              return country ? (
+                                <div
+                                  key={code}
+                                  title={country.label}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-zinc-100 dark:border-zinc-900 dark:bg-zinc-800"
+                                >
+                                  <ReactCountryFlag
+                                    countryCode={country.countryCode}
+                                    svg
+                                    style={{ width: 12, height: 12 }}
+                                    className="rounded-sm object-cover"
+                                  />
+                                </div>
+                              ) : null;
+                            })}
+                            {script.localized_markets.length > 5 && (
+                              <div className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-zinc-100 text-[8px] font-bold text-zinc-500 dark:border-zinc-900 dark:bg-zinc-800">
+                                +{script.localized_markets.length - 5}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                            {script.localized_markets.length} localized
+                          </span>
+                        </div>
+                      )}
+
                       <div className="mt-4">
                         <button
-                          onClick={() => {
-                            setActiveScript(script);
-                            setShowVersions(false);
-                            setVersions([]);
-                          }}
+                          onClick={() => router.push(`/dashboard/script/${script.id}`)}
                           className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         >
                           Open script
@@ -809,196 +726,6 @@ function DashboardContent() {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ──── HOME TAB: Script detail view ──── */}
-      {tab === "home" && activeScript && (
-        <div className="flex h-full flex-col">
-          {/* Detail header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-5 py-2 dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setActiveScript(null)}
-                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-              >
-                <ArrowLeft size={16} />
-              </button>
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-xs">
-                {activeScript.title}
-              </span>
-              {activeScript.updated_at && (
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-600">
-                  Edited {new Date(activeScript.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => {
-                  setShowVersions(!showVersions);
-                  if (!showVersions && versions.length === 0) {
-                    loadVersions(activeScript.id);
-                  }
-                }}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                  showVersions
-                    ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                }`}
-              >
-                <ClockCounterClockwise size={13} />
-                History
-              </button>
-              <button
-                onClick={() => handleToggleLocalize(activeScript.id, !!activeScript.ready_to_localize)}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                  activeScript.ready_to_localize
-                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                }`}
-              >
-                <GlobeHemisphereWest size={13} />
-                {activeScript.ready_to_localize ? "Ready to localize" : "Mark for localization"}
-              </button>
-              <button
-                onClick={() => handleDeleteScript(activeScript.id)}
-                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-              >
-                <Trash size={14} />
-              </button>
-            </div>
-          </div>
-
-          {/* Detail body */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Editor */}
-            <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
-              <div className="mx-auto max-w-3xl">
-                <ScriptEditor
-                  key={activeScript.id + "-" + activeScript.updated_at}
-                  initialContent={activeScript.content}
-                  onChange={(md) => handleScriptUpdate(activeScript.id, md)}
-                  editable
-                />
-              </div>
-            </div>
-
-            {/* Version history panel */}
-            {showVersions && (
-              <div className="w-72 shrink-0 overflow-y-auto border-l border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Version history</h3>
-                  <p className="mt-0.5 text-[10px] text-zinc-400 dark:text-zinc-500">
-                    {versions.length} previous version{versions.length !== 1 ? "s" : ""}
-                  </p>
-                </div>
-
-                {loadingVersions && (
-                  <div className="flex items-center justify-center py-8">
-                    <CircleNotch size={16} className="animate-spin text-zinc-300 dark:text-zinc-600" />
-                  </div>
-                )}
-
-                {!loadingVersions && versions.length === 0 && (
-                  <p className="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-600">
-                    No previous versions yet. Versions are created when you edit the script.
-                  </p>
-                )}
-
-                <div className="space-y-px">
-                  {/* Current version */}
-                  <div className="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Current</span>
-                      <span className="text-[10px] text-emerald-500">Live</span>
-                    </div>
-                    <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
-                      {new Date(activeScript.updated_at || activeScript.created_at).toLocaleString("en-US", {
-                        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-
-                  {versions.map((v) => {
-                    const isDiffOpen = diffVersionId === v.id;
-                    const diffParts = isDiffOpen
-                      ? diffLines(v.content, activeScript.content)
-                      : [];
-                    return (
-                    <div key={v.id} className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-                      <div className="px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                            v{v.version_number}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setDiffVersionId(isDiffOpen ? null : v.id)}
-                              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                                isDiffOpen
-                                  ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                              }`}
-                            >
-                              <FileMagnifyingGlass size={10} />
-                              Diff
-                            </button>
-                            <button
-                              onClick={() => handleRevert(activeScript.id, v.id)}
-                              disabled={revertingId === v.id}
-                              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                            >
-                              {revertingId === v.id ? (
-                                <CircleNotch size={10} className="animate-spin" />
-                              ) : (
-                                <ArrowCounterClockwise size={10} />
-                              )}
-                              Revert
-                            </button>
-                          </div>
-                        </div>
-                        <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
-                          {new Date(v.created_at).toLocaleString("en-US", {
-                            month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
-                        {!isDiffOpen && (
-                          <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-400 dark:text-zinc-600 line-clamp-3">
-                            {v.content.replace(/[#*>_~`\-]/g, "").trim().slice(0, 120)}...
-                          </p>
-                        )}
-                      </div>
-                      {isDiffOpen && (
-                        <div className="max-h-64 overflow-y-auto border-t border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-[10px] leading-relaxed dark:border-zinc-800 dark:bg-zinc-900">
-                          {diffParts.map((part, pi) =>
-                            part.value.split("\n").filter((line, li, arr) => li < arr.length - 1 || line).map((line, li) => (
-                              <div
-                                key={`${pi}-${li}`}
-                                className={
-                                  part.added
-                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                    : part.removed
-                                    ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                    : "text-zinc-500 dark:text-zinc-500"
-                                }
-                              >
-                                <span className="mr-1.5 inline-block w-3 select-none text-right opacity-60">
-                                  {part.added ? "+" : part.removed ? "−" : " "}
-                                </span>
-                                {line || " "}
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    );
-                  })}
-                </div>
               </div>
             )}
           </div>

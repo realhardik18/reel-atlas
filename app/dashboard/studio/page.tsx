@@ -457,7 +457,7 @@ export default function StudioPage() {
 
                         <div className="mt-4">
                           <button
-                            onClick={() => router.push("/dashboard")}
+                            onClick={() => router.push(`/dashboard/studio/${script.id}`)}
                             className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                           >
                             Open script

@@ -36,5 +36,19 @@ export async function POST(req: NextRequest) {
     content,
   });
 
+  // Default market: USA (en) — script is originally written in English
+  await supabase.from("localized_scripts").upsert(
+    {
+      script_id: data.id,
+      user_id: userId,
+      locale: "en",
+      market_code: "US",
+      content,
+      back_translation: content,
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "script_id,locale" },
+  );
+
   return NextResponse.json(data);
 }
