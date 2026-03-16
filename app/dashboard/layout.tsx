@@ -16,7 +16,6 @@ import {
   FilmSlate,
   GlobeHemisphereWest,
   GearSix,
-  CircleNotch,
 } from "@phosphor-icons/react";
 
 // ─── Shared profile context ────────────────────────────────────────────────
@@ -67,7 +66,7 @@ export function useDashboard() {
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: House },
-  { href: "/dashboard?tab=brand", label: "Brand", icon: ImageSquare },
+  { href: "/dashboard/brand", label: "Brand", icon: ImageSquare },
   { href: "/dashboard/studio", label: "Studio", icon: FilmSlate },
   { href: "/dashboard/localize", label: "Localize", icon: GlobeHemisphereWest },
 ];
@@ -244,12 +243,65 @@ export default function DashboardLayout({
     updateBrandImage,
   };
 
-  // Loading state
+  // Loading skeleton
   if (loading) {
     return (
       <DashboardContext.Provider value={ctxValue}>
-        <div className="flex h-screen items-center justify-center bg-white dark:bg-zinc-950">
-          <CircleNotch size={20} className="animate-spin text-zinc-300 dark:text-zinc-600" />
+        <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+          {/* Sidebar skeleton */}
+          <div
+            className="flex h-full w-[52px] shrink-0 flex-col bg-white dark:bg-zinc-950"
+            style={{ borderRight: "0.5px solid var(--color-border-tertiary, #e5e5e5)" }}
+          >
+            <div className="flex h-12 items-center px-3.5">
+              <div className="h-5 w-5 rounded bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+            </div>
+            <div className="mx-2.5" style={{ height: "0.5px", background: "var(--color-border-tertiary, #e5e5e5)" }} />
+            <div className="flex-1 space-y-1 px-1.5 py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center px-2.5 py-2">
+                  <div className="h-[18px] w-[18px] rounded bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+                </div>
+              ))}
+            </div>
+            <div className="px-1.5 pb-2 space-y-1">
+              <div className="mx-1" style={{ height: "0.5px", background: "var(--color-border-tertiary, #e5e5e5)" }} />
+              <div className="flex items-center px-2.5 py-2">
+                <div className="h-[18px] w-[18px] rounded bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-center px-2.5 py-2">
+                <div className="h-6 w-6 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Content skeleton */}
+          <div className="flex-1 overflow-hidden p-6">
+            <div className="max-w-4xl space-y-6">
+              {/* Header */}
+              <div className="space-y-2">
+                <div className="h-7 w-48 rounded-lg bg-zinc-100 dark:bg-zinc-800/60 animate-pulse" />
+                <div className="h-4 w-72 rounded-md bg-zinc-100 dark:bg-zinc-800/40 animate-pulse" />
+              </div>
+              {/* Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-3"
+                  >
+                    <div className="h-4 w-3/4 rounded-md bg-zinc-100 dark:bg-zinc-800/60 animate-pulse" />
+                    <div className="h-3 w-full rounded bg-zinc-50 dark:bg-zinc-800/40 animate-pulse" />
+                    <div className="h-3 w-2/3 rounded bg-zinc-50 dark:bg-zinc-800/40 animate-pulse" />
+                    <div className="flex gap-2 pt-1">
+                      <div className="h-5 w-14 rounded-full bg-zinc-100 dark:bg-zinc-800/60 animate-pulse" />
+                      <div className="h-5 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800/60 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </DashboardContext.Provider>
     );

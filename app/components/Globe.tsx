@@ -32,24 +32,26 @@ export default function Globe() {
     const globe = createGlobe(canvasRef.current!, {
       devicePixelRatio: 2,
       width: width * 2,
-      height: width * 2,
+      height: width * 2 * 0.4,
       phi: 0,
       theta: 0.3,
       dark: 1,
       diffuse: 3,
       mapSamples: 16000,
       mapBrightness: 1.2,
-      baseColor: [0.15, 0.15, 0.15],
-      markerColor: [1, 1, 1],
-      glowColor: [0.15, 0.15, 0.15],
+      baseColor: [1, 1, 1],
+      markerColor: [251 / 255, 100 / 255, 21 / 255],
+      glowColor: [1.2, 1.2, 1.2],
       markers: [],
+      scale: 2.5,
+      offset: [0, width * 2 * 0.4 * 0.75],
       onRender: (state: Record<string, any>) => {
         if (!pointerInteracting.current) {
           phi += 0.005;
         }
         state.phi = phi + r.get();
         state.width = width * 2;
-        state.height = width * 2;
+        state.height = width * 2 * 0.4;
       },
     });
 
@@ -66,9 +68,7 @@ export default function Globe() {
     <div
       style={{
         width: "100%",
-        maxWidth: 550,
-        aspectRatio: 1,
-        margin: "auto",
+        aspectRatio: "1 / 0.4",
         position: "relative",
       }}
     >

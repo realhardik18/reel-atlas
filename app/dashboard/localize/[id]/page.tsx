@@ -256,6 +256,14 @@ export default function LocalizeScriptPage() {
     setLocalizingMarkets(new Set(marketsToLocalize));
     setShowMarketPicker(false);
 
+    // Show a loading toast per market
+    const toastIds: Record<string, string | number> = {};
+    for (const code of marketsToLocalize) {
+      const country = COUNTRIES.find((c) => c.code === code);
+      const label = country?.label || code;
+      toastIds[code] = toast.loading(`Processing "${script.title}" for ${label}...`);
+    }
+
     try {
       const res = await fetch("/api/localize", {
         method: "POST",
@@ -286,6 +294,9 @@ export default function LocalizeScriptPage() {
           }
         >,
       )) {
+        const country = COUNTRIES.find((c) => c.code === market);
+        const label = country?.label || market;
+
         if (result.success) {
           newLocalizations[market] = {
             market_code: market,
@@ -293,8 +304,9 @@ export default function LocalizeScriptPage() {
             content: result.content,
             back_translation: result.backTranslation,
           };
+          toast.success(`${label} localization complete`, { id: toastIds[market] });
         } else {
-          toast.error(`Failed to localize for ${market}: ${result.error}`);
+          toast.error(`Failed to localize for ${label}: ${result.error}`, { id: toastIds[market] });
         }
       }
 
@@ -303,12 +315,13 @@ export default function LocalizeScriptPage() {
         const firstMarket = marketsToLocalize.find((m) => newLocalizations[m]);
         if (firstMarket) setActiveMarket(firstMarket);
       }
-
-      toast.success(
-        `Localized to ${marketsToLocalize.length} market${marketsToLocalize.length > 1 ? "s" : ""}`,
-      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to localize");
+      // Dismiss all loading toasts on error
+      for (const code of marketsToLocalize) {
+        const country = COUNTRIES.find((c) => c.code === code);
+        const label = country?.label || code;
+        toast.error(`Failed to localize for ${label}`, { id: toastIds[code] });
+      }
     } finally {
       setLocalizing(false);
       setLocalizingMarkets(new Set());

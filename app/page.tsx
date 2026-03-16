@@ -10,6 +10,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { GrainGradient } from "@paper-design/shaders-react";
+
 const CobeGlobe = dynamic(() => import("./components/Globe"), { ssr: false });
 
 const featuredMarkets = [
@@ -124,7 +126,7 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-44 pb-28 px-6">
+      <section className="relative pt-44 pb-0 px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 pointer-events-none">
           <div className="absolute top-[15%] left-[15%] w-[35%] h-[35%] bg-indigo-600/8 rounded-full blur-[120px]" />
           <div className="absolute top-[25%] right-[15%] w-[35%] h-[35%] bg-purple-600/8 rounded-full blur-[120px]" />
@@ -144,6 +146,11 @@ export default function Home() {
             Paste your URL. ReelAtlas reads your brand, understands your voice, and rebuilds your UGC content for every market — culturally reimagined, not translated.
           </p>
 
+          {/* Globe — scaled style under the title */}
+          <div className="max-w-5xl mx-auto mb-12 overflow-hidden">
+            <CobeGlobe />
+          </div>
+
           <div className="flex items-center justify-center gap-4">
             <Link
               href="/sign-up"
@@ -161,7 +168,7 @@ export default function Home() {
           </div>
 
           {/* Market pills */}
-          <div className="flex flex-wrap justify-center gap-2 mt-16 max-w-2xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-2 mt-16 max-w-2xl mx-auto mb-24">
             {featuredMarkets.map((m) => (
               <span
                 key={m.code}
@@ -177,11 +184,6 @@ export default function Home() {
             </span>
           </div>
         </div>
-      </section>
-
-      {/* Globe */}
-      <section className="max-w-3xl mx-auto px-6 -mt-10 mb-10">
-        <CobeGlobe />
       </section>
 
       {/* How it works */}
@@ -285,31 +287,45 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="max-w-3xl mx-auto px-6 py-32 text-center">
-        <div className="flex justify-center gap-1.5 mb-8">
-          {featuredMarkets.slice(0, 6).map((m) => (
-            <span key={m.code} className="text-2xl">{m.flag}</span>
-          ))}
+      {/* CTA + Footer */}
+      <footer className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <GrainGradient
+            colors={["#ffffff"]}
+            colorBack="#000000"
+            softness={1}
+            intensity={0.5}
+            noise={0.53}
+            shape="corners"
+            speed={2}
+            style={{ width: "100%", height: "100%" }}
+          />
         </div>
-        <h2
-          className="text-4xl md:text-6xl font-normal mb-6 text-white leading-[1.05]"
-          style={{ fontFamily: "serif" }}
-        >
-          Your brand belongs
-          <br />
-          <span className="text-zinc-500 italic">everywhere.</span>
-        </h2>
-        <p className="text-zinc-500 mb-10 text-[15px] font-light">
-          Start with a URL. Leave with a global campaign.
-        </p>
-        <Link
-          href="/sign-up"
-          className="inline-flex items-center gap-2.5 bg-white text-black px-8 py-3.5 rounded-xl text-[15px] font-medium hover:bg-zinc-200 transition-colors"
-        >
-          Get early access <ArrowRight size={16} />
-        </Link>
-      </section>
+        <div className="relative z-10 px-6 py-32 text-center">
+          <div className="flex justify-center gap-1.5 mb-8">
+            {featuredMarkets.slice(0, 6).map((m) => (
+              <span key={m.code} className="text-2xl">{m.flag}</span>
+            ))}
+          </div>
+          <h2
+            className="text-4xl md:text-6xl font-normal mb-6 text-white leading-[1.05]"
+            style={{ fontFamily: "serif" }}
+          >
+            Your brand belongs
+            <br />
+            <span className="text-zinc-500 italic">everywhere.</span>
+          </h2>
+          <p className="text-zinc-500 mb-10 text-[15px] font-light">
+            Start with a URL. Leave with a global campaign.
+          </p>
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center gap-2.5 bg-white text-black px-8 py-3.5 rounded-xl text-[15px] font-medium hover:bg-zinc-200 transition-colors"
+          >
+            Get early access <ArrowRight size={16} />
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }
