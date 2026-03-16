@@ -10,6 +10,10 @@ import {
   CircleNotch,
   ArrowCounterClockwise,
   Plus,
+  LinkSimple,
+  Copy,
+  Check,
+  TrashSimple,
 } from "@phosphor-icons/react";
 import ScriptEditor from "../../components/ScriptEditor";
 import { useDashboard } from "../../layout";
@@ -308,6 +312,10 @@ export default function LocalizeScriptPage() {
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showMarketPicker, setShowMarketPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<"original" | "localized" | "back">("original");
+  const [shareUrls, setShareUrls] = useState<Record<string, string>>({});
+  const [showSharePopover, setShowSharePopover] = useState(false);
+  const [sharingLoading, setSharingLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch script
   useEffect(() => {
@@ -449,6 +457,55 @@ export default function LocalizeScriptPage() {
     }
   }
 
+  async function handleShare() {
+    if (!script || !activeMarket) return;
+    setSharingLoading(true);
+    try {
+      const res = await fetch(`/api/scripts/${script.id}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ market: activeMarket }),
+      });
+      if (!res.ok) throw new Error("Failed to create share link");
+      const data = await res.json();
+      setShareUrls((prev) => ({ ...prev, [activeMarket]: data.url }));
+      setShowSharePopover(true);
+      await navigator.clipboard.writeText(data.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Share link copied to clipboard");
+    } catch {
+      toast.error("Failed to create share link");
+    } finally {
+      setSharingLoading(false);
+    }
+  }
+
+  async function handleRevokeShare() {
+    if (!script || !activeMarket) return;
+    try {
+      const res = await fetch(`/api/scripts/${script.id}/share?market=${activeMarket}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to revoke");
+      setShareUrls((prev) => {
+        const next = { ...prev };
+        delete next[activeMarket];
+        return next;
+      });
+      setShowSharePopover(false);
+      toast.success("Share link revoked");
+    } catch {
+      toast.error("Failed to revoke share link");
+    }
+  }
+
+  function handleCopyShareUrl() {
+    const url = shareUrls[activeMarket];
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -494,7 +551,7 @@ export default function LocalizeScriptPage() {
               return (
                 <button
                   key={market}
-                  onClick={() => setActiveMarket(market)}
+                  onClick={() => { setActiveMarket(market); setShowSharePopover(false); }}
                   title={country?.label || market}
                   className={`group/tab relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
                     activeMarket === market
@@ -624,6 +681,59 @@ export default function LocalizeScriptPage() {
               )}
               Re-localize
             </button>
+          )}
+
+          {/* Share button — per-market */}
+          {activeLoc && (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  if (shareUrls[activeMarket]) {
+                    setShowSharePopover(!showSharePopover);
+                  } else {
+                    handleShare();
+                  }
+                }}
+                disabled={sharingLoading}
+                className="flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-500 transition-colors hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                {sharingLoading ? (
+                  <CircleNotch size={10} className="animate-spin" />
+                ) : (
+                  <LinkSimple size={10} />
+                )}
+                Share
+              </button>
+
+              {showSharePopover && shareUrls[activeMarket] && (
+                <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+                  <p className="mb-2 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                    Share link — {activeCountry?.label}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={shareUrls[activeMarket]}
+                      className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[11px] text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                    />
+                    <button
+                      onClick={handleCopyShareUrl}
+                      className="rounded-lg border border-zinc-200 p-1.5 text-zinc-500 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                    >
+                      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleRevokeShare}
+                    className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                  >
+                    <TrashSimple size={10} />
+                    Revoke link
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
