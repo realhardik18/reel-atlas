@@ -100,7 +100,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#050505] text-zinc-100 selection:bg-white selection:text-black overflow-x-hidden">
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 backdrop-blur-xl bg-black/60 border-b border-white/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 backdrop-blur-md bg-[#050505]/40">
         <div className="flex items-center gap-2.5">
           <img src="/favicon.ico" alt="ReelAtlas" className="w-8 h-8" />
           <span style={{ fontFamily: "serif" }} className="text-xl font-medium tracking-tight text-white">
