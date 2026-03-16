@@ -13,6 +13,7 @@ import {
   FileMagnifyingGlass,
   ChatTeardropDots,
   FilmSlate,
+  Trash,
 } from "@phosphor-icons/react";
 import ReactCountryFlag from "react-country-flag";
 import { useDashboard } from "./layout";
@@ -517,6 +518,47 @@ function DashboardContent() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
+  // Selection state
+  const [selectedScripts, setSelectedScripts] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelectedScripts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedScripts.size === scripts.length) {
+      setSelectedScripts(new Set());
+    } else {
+      setSelectedScripts(new Set(scripts.map((s) => s.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedScripts.size === 0) return;
+    setDeleting(true);
+    const toastId = toast.loading(`Deleting ${selectedScripts.size} script${selectedScripts.size !== 1 ? "s" : ""}...`);
+    try {
+      await Promise.all(
+        Array.from(selectedScripts).map((id) =>
+          fetch(`/api/scripts/${id}`, { method: "DELETE" }),
+        ),
+      );
+      setScripts((prev) => prev.filter((s) => !selectedScripts.has(s.id)));
+      toast.success(`Deleted ${selectedScripts.size} script${selectedScripts.size !== 1 ? "s" : ""}`, { id: toastId });
+      setSelectedScripts(new Set());
+    } catch {
+      toast.error("Failed to delete some scripts", { id: toastId });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
 
 
   // Load scripts
@@ -544,16 +586,38 @@ function DashboardContent() {
                   Scripts
                 </h1>
                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  {scripts.length} script{scripts.length !== 1 ? "s" : ""} created
+                  {selectedScripts.size > 0
+                    ? `${selectedScripts.size} of ${scripts.length} selected`
+                    : `${scripts.length} script${scripts.length !== 1 ? "s" : ""} created`}
                 </p>
               </div>
-              <button
-                onClick={() => router.push("/dashboard/studio")}
-                className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                <Sparkle size={12} weight="fill" />
-                Create script
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedScripts.size > 0 && (
+                  <>
+                    <button
+                      onClick={toggleSelectAll}
+                      className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    >
+                      {selectedScripts.size === scripts.length ? "Deselect all" : "Select all"}
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={deleting}
+                      className="flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {deleting ? <CircleNotch size={12} className="animate-spin" /> : <Trash size={12} />}
+                      Delete ({selectedScripts.size})
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => router.push("/dashboard/studio?generate=true")}
+                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  <Sparkle size={12} weight="fill" />
+                  Create script
+                </button>
+              </div>
             </div>
 
             {!scriptsLoaded ? (
@@ -598,10 +662,21 @@ function DashboardContent() {
                     year: "numeric",
                   });
 
+                  const isSelected = selectedScripts.has(script.id);
                   return (
                     <div
                       key={script.id}
-                      className="flex flex-col rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                      onClick={(e) => {
+                        if (selectedScripts.size > 0) {
+                          e.preventDefault();
+                          toggleSelect(script.id);
+                        }
+                      }}
+                      className={`flex flex-col rounded-xl border p-5 transition-all ${
+                        isSelected
+                          ? "border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900 dark:border-zinc-100 dark:bg-zinc-800/50 dark:ring-zinc-100"
+                          : "border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                      } ${selectedScripts.size > 0 ? "cursor-pointer" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 line-clamp-1">

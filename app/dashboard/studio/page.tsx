@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Sparkle,
@@ -25,6 +25,7 @@ interface Script {
 
 export default function StudioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile } = useDashboard();
   const brandImage = profile?.brandImage?.full_brand_image;
 
@@ -55,6 +56,13 @@ export default function StudioPage() {
   const [showRefineInput, setShowRefineInput] = useState<number | null>(null);
 
   const showStudioColumns = generating || streamingScripts.some((s) => s.length > 0);
+
+  // Auto-open generate modal from query param
+  useEffect(() => {
+    if (searchParams.get("generate") === "true") {
+      setShowGenerateModal(true);
+    }
+  }, [searchParams]);
 
   // ─── Script Generation ─────────────────────────────────────────────
 
@@ -188,10 +196,8 @@ export default function StudioPage() {
       const saved = await res.json();
       if (!res.ok) throw new Error(saved.error);
 
-      // Add to saved scripts & remove from streaming
-      setScripts((prev) => [saved, ...prev]);
-      setStreamingScripts((prev) => prev.filter((_, i) => i !== index));
       toast.success(`"${title}" saved`);
+      router.push(`/dashboard/studio/${saved.id}`);
     } catch {
       toast.error("Failed to save script.");
     } finally {

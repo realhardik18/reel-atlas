@@ -10,7 +10,6 @@ import {
   CircleNotch,
   ArrowCounterClockwise,
   Plus,
-  Info,
 } from "@phosphor-icons/react";
 import ScriptEditor from "../../components/ScriptEditor";
 import { useDashboard } from "../../layout";
@@ -65,107 +64,225 @@ function Flag({ code, size = 14 }: { code: string; size?: number }) {
 
 // ─── Citation parser & renderer ────────────────────────────────────────
 
-interface CitationSegment {
-  type: "text" | "citation";
-  text: string;
-  reason?: string;
+interface ParsedCite {
+  phrase: string;
+  reason: string;
 }
 
-function parseCitations(text: string): CitationSegment[] {
-  const segments: CitationSegment[] = [];
-  const regex = /([^()]*?)\s*\(\)\[([^\]]+)\]/g;
-  let lastIndex = 0;
-  let match;
+/**
+ * Tokenize a line into text chunks and citation placeholders.
+ * Handles **bold** that spans across citations by tracking bold state.
+ * Unescapes \[ and \] for proper bracket rendering.
+ *
+ * Key fix: only highlights the phrase immediately before ()[reason],
+ * not the entire preceding text. Phrase boundary = last punctuation
+ * (, . : ; " " ") before the ().
+ */
+function tokenizeLine(raw: string, lineIdx: number): React.ReactNode[] {
+  // Step 1: Unescape markdown brackets
+  let line = raw.replace(/\\\[/g, "[").replace(/\\\]/g, "]");
 
-  while ((match = regex.exec(text)) !== null) {
-    const preText = text.slice(lastIndex, match.index);
-    if (preText) {
-      segments.push({ type: "text", text: preText });
+  // Step 2: Find all ()[reason] markers, extract just the nearby phrase
+  const cites: ParsedCite[] = [];
+  const markerRegex = /\(\)\[([^\]]+)\]/g;
+  const markers: { start: number; end: number; reason: string }[] = [];
+  let m;
+  while ((m = markerRegex.exec(line)) !== null) {
+    markers.push({ start: m.index, end: m.index + m[0].length, reason: m[1].trim() });
+  }
+
+  // Build processed line: prefix text stays as-is, phrase becomes placeholder
+  let processed = "";
+  let lastEnd = 0;
+
+  for (const marker of markers) {
+    const textBefore = line.slice(lastEnd, marker.start);
+
+    // Find phrase boundary — look backward for punctuation or quote
+    const boundaryRegex = /[,.:;!?"""'']\s*/g;
+    let boundaryEnd = 0;
+    let bm;
+    while ((bm = boundaryRegex.exec(textBefore)) !== null) {
+      boundaryEnd = bm.index + bm[0].length;
     }
-    segments.push({
-      type: "citation",
-      text: match[1].trim(),
-      reason: match[2].trim(),
-    });
-    lastIndex = match.index + match[0].length;
+
+    const prefix = textBefore.slice(0, boundaryEnd);
+    const phrase = textBefore.slice(boundaryEnd).trim();
+
+    const citeIdx = cites.length;
+    cites.push({ phrase: phrase || "(adapted)", reason: marker.reason });
+    processed += prefix + `\x00C${citeIdx}\x00`;
+    lastEnd = marker.end;
   }
 
-  const remaining = text.slice(lastIndex);
-  if (remaining) {
-    segments.push({ type: "text", text: remaining });
+  processed += line.slice(lastEnd);
+
+  // Step 3: Split by ** markers AND citation placeholders, track bold state
+  const parts = processed.split(/(\*\*|\x00C\d+\x00)/);
+  const nodes: React.ReactNode[] = [];
+  let bold = false;
+  let nodeKey = 0;
+
+  for (const part of parts) {
+    if (part === "**") {
+      bold = !bold;
+      continue;
+    }
+
+    const citeMatch = part.match(/^\x00C(\d+)\x00$/);
+    if (citeMatch) {
+      const cite = cites[parseInt(citeMatch[1])];
+      nodes.push(
+        <span key={`${lineIdx}-c${nodeKey++}`} className="group/cite relative inline">
+          <span className="inline rounded-sm bg-amber-50 px-0.5 text-amber-900 decoration-amber-300/60 decoration-wavy decoration-[1px] underline underline-offset-[3px] dark:bg-amber-900/20 dark:text-amber-200 dark:decoration-amber-600/40">
+            {bold ? (
+              <strong className="font-semibold">{cite.phrase}</strong>
+            ) : (
+              cite.phrase
+            )}
+            <sup className="relative -top-1 ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-200 text-[8px] font-bold text-amber-700 dark:bg-amber-800 dark:text-amber-300">
+              i
+            </sup>
+          </span>
+          {/* Hover tooltip */}
+          <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-normal opacity-0 transition-all duration-200 group-hover/cite:pointer-events-auto group-hover/cite:opacity-100">
+            <span className="block w-72 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-2xl dark:border-zinc-700 dark:bg-zinc-800">
+              <span className="block text-[11px] font-semibold text-zinc-800 dark:text-zinc-200">
+                Cultural adaptation
+              </span>
+              <span className="mt-1 block text-[11px] font-normal leading-relaxed text-zinc-500 dark:text-zinc-400">
+                {cite.reason}
+              </span>
+            </span>
+            <span className="absolute left-1/2 top-full -translate-x-1/2 border-[5px] border-transparent border-t-white dark:border-t-zinc-800" />
+          </span>
+        </span>,
+      );
+      continue;
+    }
+
+    if (!part) continue;
+
+    // Regular text — render with bold state and inline *italic* / `code`
+    const inlineParts = part.split(/(\*[^*]+\*|`[^`]+`)/);
+    for (const ip of inlineParts) {
+      if (!ip) continue;
+
+      const italicMatch = ip.match(/^\*([^*]+)\*$/);
+      const codeMatch = ip.match(/^`([^`]+)`$/);
+
+      let content: React.ReactNode = ip;
+
+      if (italicMatch) {
+        content = (
+          <em className="text-zinc-500 dark:text-zinc-400">{italicMatch[1]}</em>
+        );
+      } else if (codeMatch) {
+        content = (
+          <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-[0.8125rem] font-mono dark:bg-zinc-800">
+            {codeMatch[1]}
+          </code>
+        );
+      }
+
+      if (bold && !codeMatch) {
+        nodes.push(
+          <strong
+            key={`${lineIdx}-t${nodeKey++}`}
+            className="font-semibold text-zinc-900 dark:text-zinc-100"
+          >
+            {content}
+          </strong>,
+        );
+      } else {
+        nodes.push(
+          <span key={`${lineIdx}-t${nodeKey++}`}>{content}</span>,
+        );
+      }
+    }
   }
 
-  return segments;
+  return nodes;
 }
 
 function AnnotatedBackTranslation({ content }: { content: string }) {
   const lines = content.split("\n");
-  const [expandedCitation, setExpandedCitation] = useState<string | null>(null);
 
-  const hasCitations = content.includes("()[");
+  const elements: React.ReactNode[] = [];
+  let listBuffer: { text: string; idx: number; ordered: boolean }[] = [];
+
+  function flushList() {
+    if (listBuffer.length === 0) return;
+    const ordered = listBuffer[0].ordered;
+    const Tag = ordered ? "ol" : "ul";
+    elements.push(
+      <Tag
+        key={`list-${listBuffer[0].idx}`}
+        className={ordered ? "list-decimal pl-5 my-1" : "list-disc pl-5 my-1"}
+      >
+        {listBuffer.map((item) => (
+          <li
+            key={item.idx}
+            className="text-[0.9375rem] text-zinc-600 dark:text-zinc-400"
+          >
+            {tokenizeLine(item.text, item.idx)}
+          </li>
+        ))}
+      </Tag>,
+    );
+    listBuffer = [];
+  }
+
+  lines.forEach((line, lineIdx) => {
+    const ulMatch = line.match(/^[\s]*[-+]\s+(.*)/);
+    const olMatch = line.match(/^[\s]*(\d+)[.)]\s+(.*)/);
+
+    if (ulMatch) {
+      if (listBuffer.length > 0 && listBuffer[0].ordered) flushList();
+      listBuffer.push({ text: ulMatch[1], idx: lineIdx, ordered: false });
+      return;
+    }
+    if (olMatch) {
+      if (listBuffer.length > 0 && !listBuffer[0].ordered) flushList();
+      listBuffer.push({ text: olMatch[2], idx: lineIdx, ordered: true });
+      return;
+    }
+
+    flushList();
+
+    // Block-level markdown
+    if (line.startsWith("### ")) {
+      elements.push(<h3 key={lineIdx}>{tokenizeLine(line.slice(4), lineIdx)}</h3>);
+    } else if (line.startsWith("## ")) {
+      elements.push(<h2 key={lineIdx}>{tokenizeLine(line.slice(3), lineIdx)}</h2>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<h1 key={lineIdx}>{tokenizeLine(line.slice(2), lineIdx)}</h1>);
+    } else if (/^---+$|^\*\*\*+$/.test(line.trim())) {
+      elements.push(
+        <hr key={lineIdx} className="my-6 border-zinc-200 dark:border-zinc-800" />,
+      );
+    } else if (line.startsWith("> ")) {
+      elements.push(
+        <blockquote
+          key={lineIdx}
+          className="border-l-2 border-zinc-300 pl-4 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+        >
+          <p>{tokenizeLine(line.slice(2), lineIdx)}</p>
+        </blockquote>,
+      );
+    } else if (line.trim() === "") {
+      elements.push(<br key={lineIdx} />);
+    } else {
+      elements.push(<p key={lineIdx}>{tokenizeLine(line, lineIdx)}</p>);
+    }
+  });
+
+  flushList();
 
   return (
     <div className="px-6 py-4">
-      {hasCitations && (
-        <div className="mb-4 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 dark:bg-amber-900/20">
-          <Info size={12} className="shrink-0 text-amber-500" />
-          <span className="text-[10px] text-amber-700 dark:text-amber-400">
-            Highlighted phrases were culturally adapted. Click to see why.
-          </span>
-        </div>
-      )}
-      <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-zinc-900 dark:prose-headings:text-zinc-50 prose-p:text-zinc-700 dark:prose-p:text-zinc-300">
-        {lines.map((line, lineIdx) => {
-          const segments = parseCitations(line);
-          const hasCitationsInLine = segments.some((s) => s.type === "citation");
-
-          if (!hasCitationsInLine) {
-            if (line.startsWith("# ")) return <h1 key={lineIdx}>{line.slice(2)}</h1>;
-            if (line.startsWith("## ")) return <h2 key={lineIdx}>{line.slice(3)}</h2>;
-            if (line.startsWith("### ")) return <h3 key={lineIdx}>{line.slice(4)}</h3>;
-            if (line.startsWith("**") && line.endsWith("**"))
-              return (
-                <p key={lineIdx}>
-                  <strong>{line.slice(2, -2)}</strong>
-                </p>
-              );
-            if (line.trim() === "") return <br key={lineIdx} />;
-            return <p key={lineIdx}>{line}</p>;
-          }
-
-          return (
-            <p key={lineIdx}>
-              {segments.map((seg, segIdx) => {
-                if (seg.type === "text") return <span key={segIdx}>{seg.text}</span>;
-
-                const citationId = `${lineIdx}-${segIdx}`;
-                const isExpanded = expandedCitation === citationId;
-
-                return (
-                  <span key={segIdx} className="relative inline">
-                    <button
-                      onClick={() => setExpandedCitation(isExpanded ? null : citationId)}
-                      className="relative inline rounded-sm bg-amber-100 px-0.5 text-amber-900 underline decoration-amber-300 decoration-wavy decoration-[1px] underline-offset-2 transition-colors hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:decoration-amber-600 dark:hover:bg-amber-900/60"
-                    >
-                      {seg.text}
-                      <sup className="ml-0.5 text-[8px] font-bold text-amber-500">*</sup>
-                    </button>
-                    {isExpanded && (
-                      <span className="absolute left-0 top-full z-10 mt-1 block w-64 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 shadow-lg dark:border-amber-800 dark:bg-amber-950">
-                        <span className="block text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-                          Cultural adaptation
-                        </span>
-                        <span className="mt-0.5 block text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-                          {seg.reason}
-                        </span>
-                      </span>
-                    )}
-                  </span>
-                );
-              })}
-            </p>
-          );
-        })}
+      <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-zinc-900 dark:prose-headings:text-zinc-50 prose-p:text-zinc-700 dark:prose-p:text-zinc-300 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[1.875rem] prose-h1:font-bold prose-h1:leading-tight prose-h1:mt-8 prose-h1:mb-1 prose-h2:text-[1.25rem] prose-h2:font-semibold prose-h2:mt-6 prose-h2:mb-1 prose-h3:text-[1rem] prose-h3:font-medium prose-h3:mt-4 prose-h3:mb-0.5 prose-p:text-[0.9375rem] prose-p:leading-[1.75] prose-p:my-0.5 prose-li:text-[0.9375rem] prose-strong:font-semibold prose-ul:my-1 prose-ol:my-1">
+        {elements}
       </div>
     </div>
   );
