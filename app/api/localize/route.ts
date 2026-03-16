@@ -75,13 +75,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch brand image for context
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("brand_image")
+  const { data: brandImageRow } = await supabase
+    .from("brand_images")
+    .select("full_brand_image")
     .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .single();
 
-  const brandImage = profile?.brand_image?.full_brand_image;
+  const brandImage = brandImageRow?.full_brand_image;
 
   const apiKey = process.env.LINGO_API_KEY;
   if (!apiKey) {
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
     // Build cultural adaptation context
     const countryLabel = { IN: "India", US: "United States", BR: "Brazil", ID: "Indonesia", MX: "Mexico", VN: "Vietnam", RU: "Russia", TR: "Turkey", JP: "Japan", UK: "United Kingdom", DE: "Germany", KR: "South Korea", FR: "France", CA: "Canada", AU: "Australia" }[market] || market;
 
-    let adaptationContext = `This is NOT a word-for-word translation. This is a full cultural localization for ${countryLabel}. You MUST:\n`;
+    let adaptationContext = `The original script is written for the United States market in American English. This is NOT a word-for-word translation. This is a full cultural localization from the United States to ${countryLabel}. You MUST:\n`;
     adaptationContext += `- Replace idioms, metaphors, and sayings with culturally equivalent ones from ${countryLabel}\n`;
     adaptationContext += `- Swap cultural references (celebrities, holidays, food, sports, memes) with locally relevant ones\n`;
     adaptationContext += `- Adapt humor, tone, and slang to what resonates with ${countryLabel} audiences\n`;

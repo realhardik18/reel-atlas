@@ -5,6 +5,7 @@
 create table if not exists profiles (
   user_id text primary key,
   onboarding_complete boolean default false,
+  origin_country text default null,
   created_at timestamptz default now()
 );
 

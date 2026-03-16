@@ -48,38 +48,42 @@ const steps = [
   },
 ];
 
-const comparisonRows = [
-  {
-    market: "United States",
-    flag: "\u{1F1FA}\u{1F1F8}",
-    code: "US",
-    adaptation: '"Feel confident in your skin every day"',
-    backTranslation: null,
-    strategy: "Direct Empowerment",
-  },
+const showcaseCards = [
   {
     market: "Japan",
     flag: "\u{1F1EF}\u{1F1F5}",
     code: "JP",
-    adaptation: "\u808C\u304C\u672C\u6765\u6301\u3064\u7F8E\u3057\u3055\u3092\u3001\u6BCE\u65E5\u306E\u5100\u5F0F\u3067\u5F15\u304D\u51FA\u3059",
-    backTranslation: '"Draw out the beauty your skin naturally holds, through daily ritual"',
-    strategy: "Ritual & Tradition",
+    adaptation: "\u300C\u671D\u306E\u5100\u5F0F\u306B\u3001\u3042\u306A\u305F\u3089\u3057\u3044\u7F8E\u3057\u3055\u3092\u3002\u300D",
+    backTranslation: '"In your morning ritual, discover beauty that is uniquely yours."',
+    strategy: "Ritualized self-care",
+    gradient: "from-rose-500/20 via-transparent to-white/10",
+    borderGlow: "hover:border-rose-400/30",
+    accentColor: "text-rose-400",
+    bgAccent: "bg-rose-500/10",
   },
   {
     market: "Brazil",
     flag: "\u{1F1E7}\u{1F1F7}",
     code: "BR",
-    adaptation: "Brilhe do jeito que voc\u00EA \u00E9, todo dia",
-    backTranslation: '"Shine the way you are, every single day"',
-    strategy: "Self-Expression",
+    adaptation: "Acorda, brilha e mostra pro mundo quem voc\u00EA \u00E9, gata!",
+    backTranslation: '"Wake up, glow, and show the world who you are, gorgeous!"',
+    strategy: "Hype & empowerment",
+    gradient: "from-green-500/20 via-transparent to-yellow-500/10",
+    borderGlow: "hover:border-green-400/30",
+    accentColor: "text-green-400",
+    bgAccent: "bg-green-500/10",
   },
   {
     market: "South Korea",
     flag: "\u{1F1F0}\u{1F1F7}",
     code: "KR",
-    adaptation: "\uD53C\uBD80 \uBCF8\uC5F0\uC758 \uBE5B\uC744 \uAE68\uC6B0\uB294 \uC544\uCE68\uC758 \uAC10\uAC01",
-    backTranslation: '"Waking up the morning senses that awaken the skin\u2019s natural light"',
-    strategy: "Sensory Light",
+    adaptation: "\uD53C\uBD80\uAC00 \uBE5B\uB098\uB294 \uADF8 \uC21C\uAC04, \uC140\uCE74 \uAC01\uB3C4 \uC62C\uB77C\uAC00\uB294 \uB290\uB08C",
+    backTranslation: '"That moment your skin glows — feels like your selfie angle just went up."',
+    strategy: "Glass-skin & selca culture",
+    gradient: "from-blue-500/20 via-transparent to-red-500/10",
+    borderGlow: "hover:border-blue-400/30",
+    accentColor: "text-blue-400",
+    bgAccent: "bg-blue-500/10",
   },
 ];
 
@@ -223,67 +227,79 @@ export default function Home() {
 
       {/* Back-translation showcase */}
       <section id="showcase" className="max-w-5xl mx-auto px-6 py-24">
-        <div className="mb-14">
+        <div className="mb-20 text-center">
           <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-600 mb-3">Back-translation proof</p>
           <h2 className="text-3xl md:text-4xl font-normal text-white mb-4" style={{ fontFamily: "serif" }}>
             See how your message <span className="italic text-zinc-500">actually lands</span>
           </h2>
-          <p className="text-zinc-500 max-w-lg text-[15px] font-light leading-relaxed">
+          <p className="text-zinc-500 max-w-lg mx-auto text-[15px] font-light leading-relaxed">
             Every adaptation is translated back to English so you always know what your audience reads.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/5 overflow-hidden bg-zinc-900/20">
-          {/* Header */}
-          <div className="hidden sm:grid grid-cols-12 bg-zinc-900/60 border-b border-white/5">
-            <div className="col-span-3 px-6 py-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-600">
-              Market
-            </div>
-            <div className="col-span-5 px-6 py-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-600 border-l border-white/5">
-              Adaptation
-            </div>
-            <div className="col-span-4 px-6 py-4 text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-600 border-l border-white/5">
-              Back-translation
-            </div>
-          </div>
+        {/* Semi-circle arc cards */}
+        <div className="flex items-end justify-center gap-6 md:gap-8 pb-8">
+          {showcaseCards.map((card, i) => {
+            const rotations = [-6, 0, 6];
+            const translates = [12, 0, 12];
+            return (
+              <div
+                key={card.code}
+                className="group"
+                style={{
+                  transform: `rotate(${rotations[i]}deg) translateY(${translates[i]}px)`,
+                  perspective: "1000px",
+                }}
+              >
+                <div
+                  className="relative w-[260px] h-[340px] transition-transform duration-700 ease-out"
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  {/* Front */}
+                  <div
+                    className={`absolute inset-0 rounded-2xl border border-white/10 ${card.borderGlow} overflow-hidden p-7 flex flex-col items-center justify-center text-center transition-all duration-700 group-hover:[transform:rotateY(180deg)] group-hover:opacity-0`}
+                    style={{ backfaceVisibility: "hidden" }}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                    <div className="absolute inset-0 bg-zinc-900/70" />
+                    <div className="relative z-10 flex flex-col items-center">
+                      <span className="text-5xl mb-5">{card.flag}</span>
+                      <h3 className="text-xl font-medium text-white mb-2">{card.market}</h3>
+                      <span className={`inline-flex text-[10px] font-medium uppercase tracking-[0.12em] ${card.accentColor} px-2.5 py-1 rounded-full ${card.bgAccent} border border-white/5 mb-5`}>
+                        {card.strategy}
+                      </span>
+                      <p className="text-[14px] text-zinc-400 font-light leading-relaxed">
+                        {card.adaptation}
+                      </p>
+                      <div className="mt-6">
+                        <span className="text-[11px] text-zinc-600 uppercase tracking-widest">Hover to reveal</span>
+                      </div>
+                    </div>
+                  </div>
 
-          {comparisonRows.map((row) => (
-            <div
-              key={row.code}
-              className="grid grid-cols-1 sm:grid-cols-12 border-b last:border-0 border-white/5 hover:bg-white/[0.015] transition-colors"
-            >
-              <div className="col-span-3 px-6 py-6 flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">{row.flag}</span>
-                  <span className="text-[15px] font-medium text-white">{row.market}</span>
+                  {/* Back */}
+                  <div
+                    className={`absolute inset-0 rounded-2xl border border-white/10 ${card.borderGlow} overflow-hidden p-7 flex flex-col items-center justify-center text-center [transform:rotateY(180deg)] transition-all duration-700 group-hover:[transform:rotateY(0deg)]`}
+                    style={{ backfaceVisibility: "hidden" }}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient}`} />
+                    <div className="absolute inset-0 bg-zinc-900/80" />
+                    <div className="relative z-10 flex flex-col items-center">
+                      <Quote size={24} className={`${card.accentColor} mb-4 opacity-60`} />
+                      <p className="text-[15px] text-zinc-300 italic font-light leading-relaxed mb-6">
+                        {card.backTranslation}
+                      </p>
+                      <div className={`w-10 h-px ${card.bgAccent} mb-4`} />
+                      <span className="text-5xl mb-2">{card.flag}</span>
+                      <p className={`text-[11px] ${card.accentColor} uppercase tracking-widest`}>
+                        Back-translation
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <span className="inline-flex self-start text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-600 px-2 py-0.5 rounded bg-white/[0.04]">
-                  {row.strategy}
-                </span>
               </div>
-
-              <div className="col-span-5 px-6 py-6 border-l border-white/5 flex items-center">
-                <span className="text-[15px] font-light leading-relaxed text-zinc-300">
-                  {row.adaptation}
-                </span>
-              </div>
-
-              <div className="col-span-4 px-6 py-6 border-l border-white/5 flex items-start gap-3">
-                {row.backTranslation ? (
-                  <>
-                    <Quote size={14} className="shrink-0 mt-1 text-zinc-700" />
-                    <span className="text-[13px] text-zinc-500 italic font-light leading-relaxed">
-                      {row.backTranslation}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-zinc-700 text-[10px] font-medium uppercase tracking-[0.1em]">
-                    — Original
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

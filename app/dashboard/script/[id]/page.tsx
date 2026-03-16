@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { diffLines } from "diff";
 import {
   CircleNotch,
   ArrowLeft,
@@ -12,6 +11,9 @@ import {
   GlobeHemisphereWest,
   ArrowCounterClockwise,
   FileMagnifyingGlass,
+  Sparkle,
+  X,
+  PaperPlaneRight,
 } from "@phosphor-icons/react";
 import ScriptEditor from "../../components/ScriptEditor";
 import { useDashboard } from "../../layout";
@@ -44,7 +46,13 @@ export default function ScriptDetailPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [revertingId, setRevertingId] = useState<string | null>(null);
-  const [diffVersionId, setDiffVersionId] = useState<string | null>(null);
+  const [diffModalVersion, setDiffModalVersion] = useState<ScriptVersion | null>(null);
+
+  // Refine state
+  const [showRefine, setShowRefine] = useState(false);
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [refining, setRefining] = useState(false);
+  const refineInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch script on mount
   useEffect(() => {
@@ -145,6 +153,58 @@ export default function ScriptDetailPage() {
     }
   }
 
+  async function handleRefine() {
+    if (!script || !refinePrompt.trim()) return;
+    setRefining(true);
+    const toastId = toast.loading("Refining script...");
+
+    try {
+      const res = await fetch("/api/scripts/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: script.content, prompt: refinePrompt }),
+      });
+
+      if (!res.ok) throw new Error("Failed to refine");
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream");
+
+      const decoder = new TextDecoder();
+      let refined = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        refined += decoder.decode(value, { stream: true });
+      }
+
+      // Save the refined content
+      const saveRes = await fetch(`/api/scripts/${script.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: refined }),
+      });
+      const saved = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saved.error);
+
+      setScript((prev) =>
+        prev ? { ...prev, content: refined, updated_at: saved.updated_at } : prev,
+      );
+      setRefinePrompt("");
+      setShowRefine(false);
+
+      // Reload versions if panel is open
+      if (showVersions) loadVersions();
+
+      toast.success("Script refined successfully", { id: toastId });
+    } catch {
+      toast.error("Failed to refine script", { id: toastId });
+    } finally {
+      setRefining(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -184,6 +244,20 @@ export default function ScriptDetailPage() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => {
+              setShowRefine(!showRefine);
+              setTimeout(() => refineInputRef.current?.focus(), 100);
+            }}
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+              showRefine
+                ? "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            }`}
+          >
+            <Sparkle size={13} weight="fill" />
+            Refine
+          </button>
+          <button
+            onClick={() => {
               setShowVersions(!showVersions);
               if (!showVersions && versions.length === 0) {
                 loadVersions();
@@ -218,16 +292,133 @@ export default function ScriptDetailPage() {
         </div>
       </div>
 
+      {/* Refine bar */}
+      {showRefine && (
+        <div className="shrink-0 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleRefine(); }}
+            className="flex items-center gap-3"
+          >
+            <Sparkle size={14} weight="fill" className={`shrink-0 ${refining ? "animate-spin text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
+            <input
+              ref={refineInputRef}
+              type="text"
+              value={refinePrompt}
+              onChange={(e) => setRefinePrompt(e.target.value)}
+              disabled={refining}
+              placeholder="How should the script be refined? e.g. &quot;Make it more casual&quot;, &quot;Add a stronger CTA&quot;..."
+              className="flex-1 bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none disabled:opacity-50 dark:text-zinc-100 dark:placeholder:text-zinc-600"
+            />
+            <button
+              type="submit"
+              disabled={refining || !refinePrompt.trim()}
+              className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              {refining ? <CircleNotch size={12} className="animate-spin" /> : <PaperPlaneRight size={12} weight="fill" />}
+              {refining ? "Refining..." : "Refine"}
+            </button>
+            {!refining && (
+              <button
+                type="button"
+                onClick={() => { setShowRefine(false); setRefinePrompt(""); }}
+                className="rounded-lg p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </form>
+        </div>
+      )}
+
+      {/* Diff modal */}
+      {diffModalVersion && script && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setDiffModalVersion(null)}>
+          <div className="relative mx-4 flex max-h-[85vh] w-full max-w-5xl flex-col rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900" onClick={(e) => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                  v{diffModalVersion.version_number} vs Current
+                </h3>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                  {new Date(diffModalVersion.created_at).toLocaleString("en-US", {
+                    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => setDiffModalVersion(null)}
+                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Column labels */}
+            <div className="flex shrink-0 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex-1 border-r border-zinc-200 bg-red-50/60 px-4 py-2 dark:border-zinc-800 dark:bg-red-900/10">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-red-500 dark:text-red-400">v{diffModalVersion.version_number} — Previous</span>
+              </div>
+              <div className="flex-1 bg-emerald-50/60 px-4 py-2 dark:bg-emerald-900/10">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-500 dark:text-emerald-400">Current</span>
+              </div>
+            </div>
+
+            {/* Single scroll for both sides */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="flex">
+                {/* Old version */}
+                <div className="flex-1 border-r border-zinc-200 p-5 dark:border-zinc-800">
+                  <ScriptEditor initialContent={diffModalVersion.content} editable={false} />
+                </div>
+                {/* Current version */}
+                <div className="flex-1 p-5">
+                  <ScriptEditor initialContent={script.content} editable={false} />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
+              <button
+                onClick={() => {
+                  handleRevert(diffModalVersion.id);
+                  setDiffModalVersion(null);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                <ArrowCounterClockwise size={12} />
+                Revert to this version
+              </button>
+              <button
+                onClick={() => setDiffModalVersion(null)}
+                className="rounded-lg px-3 py-1.5 text-[11px] font-medium text-zinc-500 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detail body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
+        <div className="relative flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
+          {refining && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-zinc-950/80">
+              <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+                <CircleNotch size={16} className="animate-spin text-zinc-900 dark:text-white" />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Refining your script...</span>
+              </div>
+            </div>
+          )}
           <div className="mx-auto max-w-3xl">
             <ScriptEditor
               key={script.id + "-" + script.updated_at}
               initialContent={script.content}
               onChange={(md) => handleScriptUpdate(md)}
-              editable
+              editable={!refining}
             />
           </div>
         </div>
@@ -275,10 +466,7 @@ export default function ScriptDetailPage() {
                 </p>
               </div>
 
-              {versions.map((v) => {
-                const isDiffOpen = diffVersionId === v.id;
-                const diffParts = isDiffOpen ? diffLines(v.content, script.content) : [];
-                return (
+              {versions.map((v) => (
                   <div
                     key={v.id}
                     className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
@@ -290,12 +478,8 @@ export default function ScriptDetailPage() {
                         </span>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => setDiffVersionId(isDiffOpen ? null : v.id)}
-                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                              isDiffOpen
-                                ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                            }`}
+                            onClick={() => setDiffModalVersion(v)}
+                            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                           >
                             <FileMagnifyingGlass size={10} />
                             Diff
@@ -322,41 +506,12 @@ export default function ScriptDetailPage() {
                           minute: "2-digit",
                         })}
                       </p>
-                      {!isDiffOpen && (
-                        <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-400 dark:text-zinc-600 line-clamp-3">
-                          {v.content.replace(/[#*>_~`\-]/g, "").trim().slice(0, 120)}...
-                        </p>
-                      )}
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-400 dark:text-zinc-600 line-clamp-3">
+                        {v.content.replace(/[#*>_~`\-]/g, "").trim().slice(0, 120)}...
+                      </p>
                     </div>
-                    {isDiffOpen && (
-                      <div className="max-h-64 overflow-y-auto border-t border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-[10px] leading-relaxed dark:border-zinc-800 dark:bg-zinc-900">
-                        {diffParts.map((part, pi) =>
-                          part.value
-                            .split("\n")
-                            .filter((line, li, arr) => li < arr.length - 1 || line)
-                            .map((line, li) => (
-                              <div
-                                key={`${pi}-${li}`}
-                                className={
-                                  part.added
-                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                    : part.removed
-                                      ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                      : "text-zinc-500 dark:text-zinc-500"
-                                }
-                              >
-                                <span className="mr-1.5 inline-block w-3 select-none text-right opacity-60">
-                                  {part.added ? "+" : part.removed ? "\u2212" : " "}
-                                </span>
-                                {line || " "}
-                              </div>
-                            )),
-                        )}
-                      </div>
-                    )}
                   </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         )}

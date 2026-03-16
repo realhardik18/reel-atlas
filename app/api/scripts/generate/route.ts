@@ -53,6 +53,13 @@ Content Themes: ${bi.content_themes?.join(", ")}
 UGC Suggestions: ${bi.ugc_suggestions?.join(", ")}
 Target Markets: ${bi.target_markets?.join(", ")}
 ${notesSection}
+ORIGIN MARKET — UNITED STATES:
+- Write all scripts for an American audience
+- Use American cultural references, slang, humor, and examples (e.g. Super Bowl, Target runs, "no cap", USD pricing)
+- All locations, brands, and product references should be relevant to the United States
+- The tone and language style should feel natural to an American content creator on TikTok/Reels
+- Use American English spelling and phrasing throughout
+
 SCRIPT REQUIREMENTS:
 - Each script should be 25-40 seconds when spoken aloud
 - Each must be a DIFFERENT format (mix from: testimonial, tutorial/how-to, day-in-the-life, unboxing, get-ready-with-me, before/after, storytime, POV, problem-solution, comparison)
