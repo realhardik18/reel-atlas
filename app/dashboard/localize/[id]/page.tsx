@@ -307,6 +307,7 @@ export default function LocalizeScriptPage() {
   const [activeMarket, setActiveMarket] = useState<string>("");
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showMarketPicker, setShowMarketPicker] = useState(false);
+  const [activeTab, setActiveTab] = useState<"original" | "localized" | "back">("original");
 
   // Fetch script
   useEffect(() => {
@@ -355,12 +356,13 @@ export default function LocalizeScriptPage() {
   }
 
   const availableMarkets = COUNTRIES.filter((c) => targetMarkets.includes(c.code));
+  const unlocalizedMarkets = availableMarkets.filter((c) => !localizations[c.code]);
 
   function toggleAll() {
-    if (selectedMarkets.size === availableMarkets.length) {
+    if (selectedMarkets.size === unlocalizedMarkets.length) {
       setSelectedMarkets(new Set());
     } else {
-      setSelectedMarkets(new Set(availableMarkets.map((m) => m.code)));
+      setSelectedMarkets(new Set(unlocalizedMarkets.map((m) => m.code)));
     }
   }
 
@@ -432,6 +434,8 @@ export default function LocalizeScriptPage() {
         const firstMarket = marketsToLocalize.find((m) => newLocalizations[m]);
         if (firstMarket) setActiveMarket(firstMarket);
       }
+      // Auto-switch to localized tab after completion
+      setActiveTab("localized");
     } catch (err) {
       // Dismiss all loading toasts on error
       for (const code of marketsToLocalize) {
@@ -491,7 +495,8 @@ export default function LocalizeScriptPage() {
                 <button
                   key={market}
                   onClick={() => setActiveMarket(market)}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                  title={country?.label || market}
+                  className={`group/tab relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
                     activeMarket === market
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                       : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
@@ -499,6 +504,11 @@ export default function LocalizeScriptPage() {
                 >
                   <Flag code={market} size={12} />
                   {market}
+                  {/* Hover tooltip */}
+                  <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2.5 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tab:opacity-100 dark:bg-zinc-100 dark:text-zinc-900">
+                    {country?.label || market}
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-zinc-900 dark:border-b-zinc-100" />
+                  </span>
                 </button>
               );
             })}
@@ -525,7 +535,7 @@ export default function LocalizeScriptPage() {
                       onClick={toggleAll}
                       className="text-[10px] font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                     >
-                      {selectedMarkets.size === availableMarkets.length
+                      {selectedMarkets.size === unlocalizedMarkets.length
                         ? "Deselect all"
                         : "Select all"}
                     </button>
@@ -533,39 +543,48 @@ export default function LocalizeScriptPage() {
                 </div>
 
                 <div className="max-h-48 overflow-y-auto py-1">
-                  {availableMarkets.length === 0 ? (
-                    <p className="px-3 py-4 text-center text-[11px] text-zinc-400">
-                      No target markets configured in brand image
-                    </p>
-                  ) : (
-                    availableMarkets.map((country) => (
+                  {(() => {
+                    const unlocalized = availableMarkets.filter(
+                      (c) => !localizations[c.code],
+                    );
+                    if (availableMarkets.length === 0) {
+                      return (
+                        <p className="px-3 py-4 text-center text-[11px] text-zinc-400">
+                          No target markets configured in brand image
+                        </p>
+                      );
+                    }
+                    if (unlocalized.length === 0) {
+                      return (
+                        <p className="px-3 py-4 text-center text-[11px] text-zinc-400">
+                          All markets have been localized
+                        </p>
+                      );
+                    }
+                    return unlocalized.map((country) => (
                       <label
                         key={country.code}
-                        className="flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                        className="flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                       >
                         <input
                           type="checkbox"
                           checked={selectedMarkets.has(country.code)}
                           onChange={() => toggleMarket(country.code)}
-                          className="h-3 w-3 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                          className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
                         />
-                        <Flag code={country.code} size={14} />
-                        <span className="text-[11px] text-zinc-700 dark:text-zinc-300">
+                        <Flag code={country.code} size={16} />
+                        <span className="text-[12px] text-zinc-700 dark:text-zinc-300">
                           {country.label}
                         </span>
                         {localizingMarkets.has(country.code) && (
                           <CircleNotch
-                            size={10}
+                            size={12}
                             className="ml-auto animate-spin text-zinc-400"
                           />
                         )}
-                        {localizations[country.code] &&
-                          !localizingMarkets.has(country.code) && (
-                            <span className="ml-auto text-[9px] text-emerald-500">done</span>
-                          )}
                       </label>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
 
                 <div className="border-t border-zinc-100 px-3 py-2 dark:border-zinc-800">
@@ -609,82 +628,44 @@ export default function LocalizeScriptPage() {
         </div>
       </div>
 
-      {/* Three-column canvas */}
-      <div className="flex flex-1 overflow-hidden bg-zinc-100 p-3 dark:bg-zinc-900">
-        {/* Column 1: Original English */}
-        <div className="flex h-full flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-zinc-100 px-4 py-2 dark:border-zinc-800/50">
+      {/* Single-panel view with tabs */}
+      <div className="flex flex-1 flex-col overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+        {/* View tabs */}
+        <div className="flex shrink-0 items-center gap-1 px-4 pt-3 pb-0">
+          <button
+            onClick={() => setActiveTab("original")}
+            className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-xs font-medium transition-colors ${
+              activeTab === "original"
+                ? "bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50"
+                : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            }`}
+          >
             <Flag code="US" size={12} />
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              Original (English)
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <ScriptEditor
-              key={`original-${script.id}`}
-              initialContent={script.content}
-              editable={false}
-            />
-          </div>
-        </div>
-
-        <div className="w-3 shrink-0" />
-
-        {/* Column 2: Localized version */}
-        <div className="flex h-full flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-zinc-100 px-4 py-2 dark:border-zinc-800/50">
+            Original
+          </button>
+          <button
+            onClick={() => activeLoc && setActiveTab("localized")}
+            disabled={!activeLoc}
+            className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-xs font-medium transition-colors disabled:opacity-30 ${
+              activeTab === "localized"
+                ? "bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50"
+                : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            }`}
+          >
             {activeMarket && <Flag code={activeMarket} size={12} />}
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              {activeLoc
-                ? `Localized \u2014 ${activeCountry?.label} (${activeLoc.locale})`
-                : "Localized"}
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {loadingExisting ? (
-              <div className="flex h-full items-center justify-center">
-                <CircleNotch
-                  size={16}
-                  className="animate-spin text-zinc-300 dark:text-zinc-700"
-                />
-              </div>
-            ) : localizing && !activeLoc ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <CircleNotch
-                    size={16}
-                    className="mx-auto animate-spin text-zinc-300 dark:text-zinc-700"
-                  />
-                  <p className="mt-2 text-xs text-zinc-400">Localizing...</p>
-                </div>
-              </div>
-            ) : activeLoc ? (
-              <ScriptEditor
-                key={`localized-${script.id}-${activeMarket}`}
-                initialContent={activeLoc.content}
-                editable={false}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="px-6 text-center">
-                  <GlobeHemisphereWest
-                    size={24}
-                    className="mx-auto text-zinc-200 dark:text-zinc-700"
-                  />
-                  <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                    Select markets and click Localize to see translated scripts
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="w-3 shrink-0" />
-
-        {/* Column 3: Back-translation with citations */}
-        <div className="flex h-full flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-zinc-100 px-4 py-2 dark:border-zinc-800/50">
+            {activeLoc
+              ? `Localized — ${activeCountry?.label}`
+              : "Localized"}
+          </button>
+          <button
+            onClick={() => activeLoc && setActiveTab("back")}
+            disabled={!activeLoc}
+            className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-xs font-medium transition-colors disabled:opacity-30 ${
+              activeTab === "back"
+                ? "bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50"
+                : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            }`}
+          >
             <Flag code="US" size={12} />
             {activeMarket && (
               <>
@@ -692,50 +673,70 @@ export default function LocalizeScriptPage() {
                 <Flag code={activeMarket} size={12} />
               </>
             )}
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              {activeLoc ? "Back to English" : "Back-translation"}
-            </span>
-          </div>
+            Back-translation
+          </button>
+        </div>
+
+        {/* Content panel */}
+        <div className="mx-3 mb-3 flex flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex-1 overflow-y-auto">
+            {/* Loading state */}
             {loadingExisting ? (
               <div className="flex h-full items-center justify-center">
-                <CircleNotch
-                  size={16}
-                  className="animate-spin text-zinc-300 dark:text-zinc-700"
-                />
+                <CircleNotch size={16} className="animate-spin text-zinc-300 dark:text-zinc-700" />
               </div>
             ) : localizing && !activeLoc ? (
               <div className="flex h-full items-center justify-center">
                 <div className="text-center">
-                  <CircleNotch
-                    size={16}
-                    className="mx-auto animate-spin text-zinc-300 dark:text-zinc-700"
-                  />
-                  <p className="mt-2 text-xs text-zinc-400">Translating back...</p>
-                </div>
-              </div>
-            ) : activeLoc?.back_translation ? (
-              <AnnotatedBackTranslation content={activeLoc.back_translation} />
-            ) : activeLoc ? (
-              <div className="flex h-full items-center justify-center">
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Back-translation not available
-                </p>
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="px-6 text-center">
-                  <ArrowCounterClockwise
-                    size={24}
-                    className="mx-auto text-zinc-200 dark:text-zinc-700"
-                  />
-                  <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                    The localized script translated back to English with annotated cultural
-                    changes
+                  <CircleNotch size={16} className="mx-auto animate-spin text-zinc-300 dark:text-zinc-700" />
+                  <p className="mt-2 text-xs text-zinc-400">
+                    {activeTab === "back" ? "Translating back..." : "Localizing..."}
                   </p>
                 </div>
               </div>
-            )}
+            ) : activeTab === "original" ? (
+              <ScriptEditor
+                key={`original-${script.id}`}
+                initialContent={script.content}
+                editable={false}
+              />
+            ) : activeTab === "localized" ? (
+              activeLoc ? (
+                <ScriptEditor
+                  key={`localized-${script.id}-${activeMarket}`}
+                  initialContent={activeLoc.content}
+                  editable={false}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="px-6 text-center">
+                    <GlobeHemisphereWest size={24} className="mx-auto text-zinc-200 dark:text-zinc-700" />
+                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      Select markets and click Localize to see translated scripts
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : activeTab === "back" ? (
+              activeLoc?.back_translation ? (
+                <AnnotatedBackTranslation content={activeLoc.back_translation} />
+              ) : activeLoc ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                    Back-translation not available
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="px-6 text-center">
+                    <ArrowCounterClockwise size={24} className="mx-auto text-zinc-200 dark:text-zinc-700" />
+                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      The localized script translated back to English with annotated cultural changes
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : null}
           </div>
         </div>
       </div>
