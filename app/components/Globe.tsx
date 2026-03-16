@@ -110,6 +110,18 @@ export default function Globe() {
           transition: "opacity 1s ease",
         }}
       />
+      {/* Bottom gradient fade */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "40%",
+          background: "linear-gradient(to bottom, transparent, #050505)",
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }
