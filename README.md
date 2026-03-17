@@ -1,4 +1,5 @@
 # ReelAtlas
+<img width="1470" height="807" alt="image" src="https://github.com/user-attachments/assets/118a7dc6-e524-412a-a77a-81cb3f55ec9f" />
 
 **Your brand speaks. The world understands.**
 
