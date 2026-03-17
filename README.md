@@ -1,8 +1,8 @@
-# ReelAtlas
+ # ReelAtlas
 <img width="1470" height="807" alt="image" src="https://github.com/user-attachments/assets/118a7dc6-e524-412a-a77a-81cb3f55ec9f" />
+[Demo Video](https://docs.google.com/videos/d/1MOzc8UoGvpYF6uXPlHIOiObQvIrWZKeOuUnql3V2SN8/play)
 
 **Your brand speaks. The world understands.**
-
 ReelAtlas is a brand intelligence and UGC script generation platform that culturally adapts marketing content for global markets. Not translated — reimagined.
 
 Paste your URL. ReelAtlas reads your brand, understands your voice, and rebuilds your UGC content for every market.
